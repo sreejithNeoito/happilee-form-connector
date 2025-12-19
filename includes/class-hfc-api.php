@@ -327,6 +327,5 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 				'message'   => 'Form data fetched successfully'
 			), 200 );
 		}
-
 	}
 }
