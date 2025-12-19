@@ -1,0 +1,13 @@
+# Node dependencies
+app/node_modules/
+
+# VSCode settings
+.vscode/
+
+# Mac OS files
+.DS_Store
+app/.DS_Store
+assets/.DS_Store
+
+# Hot reload temp files
+assets/js/.hot/
