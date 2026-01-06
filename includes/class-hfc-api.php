@@ -132,26 +132,26 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 			}
 
 			// Forminator
-			if ( class_exists( 'Forminator' ) ) {
-				$forminator_forms = Forminator_Form_Model::model()->get_all_models();
-				$forminator_list  = [];
+			// if ( class_exists( 'Forminator' ) ) {
+			// 	$forminator_forms = Forminator_Form_Model::model()->get_all_models();
+			// 	$forminator_list  = [];
 
-				if ( ! empty( $forminator_forms ) ) {
-					foreach ( $forminator_forms as $form ) {
-						$forminator_list[] = [
-							'id'   => $form->id,
-							'name' => $form->name,
-						];
-					}
-				}
+			// 	if ( ! empty( $forminator_forms ) ) {
+			// 		foreach ( $forminator_forms as $form ) {
+			// 			$forminator_list[] = [
+			// 				'id'   => $form->id,
+			// 				'name' => $form->name,
+			// 			];
+			// 		}
+			// 	}
 
-				$form_plugins[] = [
-					'type'        => 'forminator',
-					'displayName' => 'Forminator Forms',
-					'forms'       => $forminator_list,
-					'count'       => count( $forminator_list )
-				];
-			}
+			// 	$form_plugins[] = [
+			// 		'type'        => 'forminator',
+			// 		'displayName' => 'Forminator Forms',
+			// 		'forms'       => $forminator_list,
+			// 		'count'       => count( $forminator_list )
+			// 	];
+			// }
 
 			// WPForms
 			if ( function_exists( 'wpforms' ) ) {
@@ -172,28 +172,6 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 					'displayName' => 'WPForms',
 					'forms'       => $wpforms_list,
 					'count'       => count( $wpforms_list )
-				];
-			}
-
-			// Gravity Forms
-			if ( class_exists( 'GFForms' ) ) {
-				$gf_forms = GFAPI::get_forms();
-				$gf_list  = [];
-
-				if ( ! empty( $gf_forms ) ) {
-					foreach ( $gf_forms as $form ) {
-						$gf_list[] = [
-							'id'   => $form['id'],
-							'name' => $form['title'],
-						];
-					}
-				}
-
-				$form_plugins[] = [
-					'type'        => 'gf',
-					'displayName' => 'Gravity Forms',
-					'forms'       => $gf_list,
-					'count'       => count( $gf_list )
 				];
 			}
 

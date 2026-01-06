@@ -185,6 +185,9 @@
 .wphfc-mb-4{
   margin-bottom: 1rem;
 }
+.wphfc-mb-5{
+  margin-bottom: 1.25rem;
+}
 .wphfc-mb-6{
   margin-bottom: 1.5rem;
 }
@@ -238,12 +241,6 @@
 }
 .wphfc-w-\[100\%\]{
   width: 100%;
-}
-.wphfc-w-\[20\%\]{
-  width: 20%;
-}
-.wphfc-w-\[80\%\]{
-  width: 80%;
 }
 .wphfc-w-full{
   width: 100%;
@@ -745,5 +742,23 @@ input:checked + .wphfc-slider:before {
 }
 .disabled\:wphfc-opacity-50:disabled{
   opacity: 0.5;
+}
+@media (min-width: 768px){
+
+  .md\:wphfc-mb-0{
+    margin-bottom: 0px;
+  }
+
+  .md\:wphfc-flex{
+    display: flex;
+  }
+
+  .md\:wphfc-w-\[20\%\]{
+    width: 20%;
+  }
+
+  .md\:wphfc-w-\[80\%\]{
+    width: 80%;
+  }
 }
 

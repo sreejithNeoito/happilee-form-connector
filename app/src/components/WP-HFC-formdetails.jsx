@@ -56,6 +56,8 @@ const WPHFC_FormDetails = ({ activeForm }) => {
     const icons = {
       cf7: `${happileeConnect.plugin_url}assets/img/logo-contactform7.png`,
       wpforms: `${happileeConnect.plugin_url}assets/img/logo-wpforms.png`,
+      forminator: `${happileeConnect.plugin_url}assets/img/logo-forminator.png`,
+      ninja: `${happileeConnect.plugin_url}assets/img/logo-ninjaforms.png`,
     };
     return icons[formType];
   };
