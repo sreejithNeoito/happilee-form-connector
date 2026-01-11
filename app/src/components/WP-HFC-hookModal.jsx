@@ -14,16 +14,43 @@ const WPHFC_HookModal = ({
   const getAvailableHooks = (formType) => {
     const hooks = {
       cf7: [
-        { value: "wpcf7_mail_sent", label: "Mail Sent" },
+        { value: "wpcf7_mail_sent", label: "Mail Sent ( Recommended )" },
         { value: "wpcf7_before_send_mail", label: "Before Send Mail" },
         { value: "wpcf7_mail_failed", label: "Mail Failed" },
         { value: "wpcf7_submit", label: "On Submit" },
       ],
       wpforms: [
-        { value: "wpforms_process_complete", label: "Process Complete" },
+        {
+          value: "wpforms_process_complete",
+          label: "Process Complete ( Recommended )",
+        },
         { value: "wpforms_process_before", label: "Before Process" },
         { value: "wpforms_process_after", label: "After Process" },
         { value: "wpforms_entry_save", label: "Entry Save" },
+      ],
+      ninja_forms: [
+        {
+          value: "ninja_forms_after_submission",
+          label: "After Submission ( Recommended )",
+        },
+        {
+          value: "ninja_forms_submit_data",
+          label: "Submit Data ( Before Processing )",
+        },
+      ],
+      forminator: [
+        {
+          value: "forminator_form_after_save_entry",
+          label: "After Save Entry ( Recommended )",
+        },
+        {
+          value: "forminator_form_ajax_submit_response",
+          label: "AJAX Submit Response",
+        },
+        {
+          value: "forminator_form_submit_response",
+          label: "Form Submit Response ( For non-AJAX forms )",
+        },
       ],
     };
     return hooks[formType] || [];

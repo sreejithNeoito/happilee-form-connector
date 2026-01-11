@@ -40,7 +40,7 @@ const WPHFC_FormDetails = ({ activeForm }) => {
             const isEnabled = form.is_enabled === 1 || form.is_enabled === "1";
 
             states[formKey] = isEnabled;
-            hooks[formKey] = form.active_hook || ""; // Simple string, not nested object
+            hooks[formKey] = form.active_hook || "";
           });
 
           setFormStates(states);
@@ -57,7 +57,7 @@ const WPHFC_FormDetails = ({ activeForm }) => {
       cf7: `${happileeConnect.plugin_url}assets/img/logo-contactform7.png`,
       wpforms: `${happileeConnect.plugin_url}assets/img/logo-wpforms.png`,
       forminator: `${happileeConnect.plugin_url}assets/img/logo-forminator.png`,
-      ninja: `${happileeConnect.plugin_url}assets/img/logo-ninjaforms.png`,
+      ninja_forms: `${happileeConnect.plugin_url}assets/img/logo-ninjaforms.png`,
     };
     return icons[formType];
   };
@@ -77,6 +77,12 @@ const WPHFC_FormDetails = ({ activeForm }) => {
           break;
         case "wpforms":
           activeHook = "wpforms_process_complete";
+          break;
+        case "ninja_forms":
+          activeHook = "ninja_forms_process_complete";
+          break;
+        case "forminator":
+          activeHook = "forminator_form_after_handle_submit";
           break;
         default:
           console.warn("Unknown form type:", formType);

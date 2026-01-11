@@ -8,11 +8,108 @@ if ( ! defined( 'ABSPATH' ) ) {
 if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 
 	class Happilee_HFC_Api {
+		private static $instance = null;
 		private $table_name;
-		public function __construct() {
+		private $encryption_key;
+
+		const API_ENDPOINT = 'https://webhook.site/ff3aabd0-cf77-4043-a2b4-9075ad225557';
+
+		public static function get_instance() {
+			if ( self::$instance === null ) {
+				self::$instance = new self();
+			}
+			return self::$instance;
+		}
+
+		private function __construct() {
 			global $wpdb;
 			$this->table_name = $wpdb->prefix . 'hfc_forms_data';
 			add_action( 'rest_api_init', array( $this, 'register_routes' ) );
+		}
+
+		/**
+		 * Encrypt API key
+		 */
+		private function encrypt( $data ) {
+
+			if ( empty( $data ) ) {
+				return '';
+			}
+
+			if ( ! function_exists( 'openssl_encrypt' ) ) {
+				error_log( 'Happilee Forms Connect: OpenSSL not available, storing without encryption' );
+				return base64_encode( $data );
+			}
+
+			$method    = 'AES-256-CBC';
+			$iv_length = openssl_cipher_iv_length( $method );
+			$iv        = openssl_random_pseudo_bytes( $iv_length );
+
+			$encrypted = openssl_encrypt( $data, $method, $this->encryption_key, 0, $iv );
+
+			if ( false === $encrypted ) {
+				error_log( 'Happilee Forms Connect: Encryption failed' );
+				return '';
+			}
+
+			return base64_encode( $iv . '::' . $encrypted );
+		}
+
+		/**
+		 * Decrypt API key
+		 */
+		private function decrypt( $data ) {
+			if ( empty( $data ) ) {
+				return '';
+			}
+
+			$decoded = base64_decode( $data, true );
+
+			if ( false === $decoded ) {
+				return '';
+			}
+
+			if ( ! function_exists( 'openssl_decrypt' ) ) {
+				return $decoded;
+			}
+
+			if ( false === strpos( $decoded, '::' ) ) {
+				return $decoded;
+			}
+
+			$method    = 'AES-256-CBC';
+			$iv_length = openssl_cipher_iv_length( $method );
+
+			list( $iv, $encrypted ) = explode( '::', $decoded, 2 );
+
+			if ( strlen( $iv ) !== $iv_length ) {
+				error_log( 'Happilee Forms Connect: Invalid IV length during decryption' );
+				return '';
+			}
+
+			$decrypted = openssl_decrypt( $encrypted, $method, $this->encryption_key, 0, $iv );
+
+			if ( false === $decrypted ) {
+				error_log( 'Happilee Forms Connect: Decryption failed' );
+				return '';
+			}
+
+			return $decrypted;
+		}
+
+		/**
+		 * Get API endpoint
+		 */
+		public function get_api_endpoint() {
+			return apply_filters( 'wphfc_api_endpoint', self::API_ENDPOINT );
+		}
+
+		/**
+		 * Get decrypted API key
+		 */
+		public function get_api_key() {
+			$encrypted_key = get_option( 'wphfc_api_key', '' );
+			return ! empty( $encrypted_key ) ? $this->decrypt( $encrypted_key ) : '';
 		}
 
 		public function register_routes() {
@@ -61,44 +158,87 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 		 */
 		public function wphfc_save_api_settings( WP_REST_Request $request ) {
 
-			$endpoint = sanitize_text_field( $request['apiEndpoint'] );
-			$api_key  = sanitize_text_field( $request['apiKey'] );
+			$api_key = $request->get_param( 'apiKey' );
 
-			if ( ! $endpoint || ! $api_key ) {
-				return new WP_REST_Response( [ 'message' => 'Missing fields' ], 400 );
+			if ( empty( $api_key ) ) {
+				return new WP_REST_Response( array(
+					'success' => false,
+					'message' => __( 'API Key is required', 'happilee-forms-connect' )
+				), 400 );
 			}
 
-			$response = wp_remote_get( $endpoint . '/auth/check', [
-				'headers' => [
+			// Rate limiting
+			$transient_key = 'wphfc_api_verify_' . get_current_user_id();
+			if ( get_transient( $transient_key ) ) {
+				return new WP_REST_Response( array(
+					'success' => false,
+					'message' => __( 'Please wait before verifying again', 'happilee-forms-connect' )
+				), 429 );
+			}
+
+			$api_endpoint = $this->get_api_endpoint();
+
+			$response = wp_remote_get( $api_endpoint . '/auth/check', [
+				'headers'     => [
 					'Authorization' => 'Bearer ' . $api_key,
+					'Content-Type'  => 'application/json',
+					'User-Agent'    => 'Happilee-Forms-Connect/' . HAPPILEE_FORMS_VERSION . '; ' . get_bloginfo( 'url' ),
 				],
-				'timeout' => 15, // Added timeout
+				'timeout'     => 15,
+				'redirection' => 0,
+				'sslverify'   => true,
+				'httpversion' => '1.1',
 			] );
 
+			set_transient( $transient_key, true, 10 );
+
 			if ( is_wp_error( $response ) ) {
-				return new WP_REST_Response( [
-					'message' => 'API request error: ' . $response->get_error_message()
-				], 500 );
+				return new WP_REST_Response( array(
+					'success' => false,
+					'message' => sprintf(
+						__( 'API request error: %s', 'happilee-forms-connect' ),
+						esc_html( $response->get_error_message() )
+					)
+				), 500 );
 			}
 
 			$code = wp_remote_retrieve_response_code( $response );
-			if ( $code !== 200 ) {
-				return new WP_REST_Response( [ 'message' => 'Invalid API key' ], 401 );
+			if ( 200 !== $code ) {
+				return new WP_REST_Response( array(
+					'success' => false,
+					'message' => __( 'Invalid API key', 'happilee-forms-connect' )
+				), 401 );
 			}
 
-			// If success — save the values
-			update_option( 'wphfc_api_endpoint', $endpoint );
-			update_option( 'wphfc_api_key', $api_key );
+			$encrypted_key = $this->encrypt( $api_key );
 
-			return new WP_REST_Response( [ 'message' => 'Settings saved successfully' ], 200 );
+			if ( empty( $encrypted_key ) ) {
+				return new WP_REST_Response( array(
+					'success' => false,
+					'message' => __( 'Failed to encrypt API key', 'happilee-forms-connect' )
+				), 500 );
+			}
+
+			update_option( 'wphfc_api_key', $encrypted_key, false );
+
+			return new WP_REST_Response( array(
+				'success' => true,
+				'message' => __( 'Settings saved successfully', 'happilee-forms-connect' )
+			), 200 );
 
 		}
 
+		/**
+		 * Get API settings with decryption
+		 */
 		public function wphfc_get_api_settings( WP_REST_Request $request ) {
+			$decrypted_key = $this->get_api_key();
+
 			return new WP_REST_Response(
 				array(
-					'apiEndpoint' => get_option( 'wphfc_api_endpoint', '' ),
-					'apiKey'      => get_option( 'wphfc_api_key', '' ),
+					'success'     => true,
+					'apiEndpoint' => $this->get_api_endpoint(),
+					'apiKey'      => $decrypted_key,
 				),
 				200
 			);
@@ -116,8 +256,8 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 				if ( ! empty( $cf7_forms ) ) {
 					foreach ( $cf7_forms as $form ) {
 						$cf7_list[] = [
-							'id'   => $form->id(),
-							'name' => $form->title(),
+							'id'   => absint( $form->id() ),
+							'name' => sanitize_text_field( $form->title() ),
 						];
 					}
 				}
@@ -131,28 +271,6 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 				];
 			}
 
-			// Forminator
-			// if ( class_exists( 'Forminator' ) ) {
-			// 	$forminator_forms = Forminator_Form_Model::model()->get_all_models();
-			// 	$forminator_list  = [];
-
-			// 	if ( ! empty( $forminator_forms ) ) {
-			// 		foreach ( $forminator_forms as $form ) {
-			// 			$forminator_list[] = [
-			// 				'id'   => $form->id,
-			// 				'name' => $form->name,
-			// 			];
-			// 		}
-			// 	}
-
-			// 	$form_plugins[] = [
-			// 		'type'        => 'forminator',
-			// 		'displayName' => 'Forminator Forms',
-			// 		'forms'       => $forminator_list,
-			// 		'count'       => count( $forminator_list )
-			// 	];
-			// }
-
 			// WPForms
 			if ( function_exists( 'wpforms' ) ) {
 				$wpforms_forms = wpforms()->form->get( '', [ 'orderby' => 'title' ] );
@@ -161,8 +279,8 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 				if ( ! empty( $wpforms_forms ) ) {
 					foreach ( $wpforms_forms as $form ) {
 						$wpforms_list[] = [
-							'id'   => $form->ID,
-							'name' => $form->post_title,
+							'id'   => absint( $form->ID ),
+							'name' => sanitize_text_field( $form->post_title ),
 						];
 					}
 				}
@@ -183,23 +301,46 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 				if ( ! empty( $ninja_forms ) ) {
 					foreach ( $ninja_forms as $form ) {
 						$ninja_list[] = [
-							'id'   => $form->get_id(),
-							'name' => $form->get_setting( 'title' ),
+							'id'   => absint( $form->get_id() ),
+							'name' => sanitize_text_field( $form->get_setting( 'title' ) ),
 						];
 					}
 				}
 
 				$form_plugins[] = [
-					'type'        => 'ninja',
+					'type'        => 'ninja_forms',
 					'displayName' => 'Ninja Forms',
 					'forms'       => $ninja_list,
 					'count'       => count( $ninja_list )
 				];
 			}
+            
+			// Forminator
+			if ( class_exists( 'Forminator_API' ) ) {
+    		   $forminator_forms = Forminator_API::get_forms();
+
+				$forminator_list = [];
+
+				if ( ! empty( $forminator_forms ) ) {
+					foreach ( $forminator_forms as $form ) {
+						$forminator_list[] = [
+							'id'   => absint( $form->id ),
+							'name' => sanitize_text_field( $form->name ),
+						];
+					}
+				}	
+
+				$form_plugins[] = [
+					'type'        => 'forminator',
+					'displayName' => 'Forminator',
+					'forms'       => $forminator_list,
+					'count'       => count( $forminator_list )
+				];
+			}
 
 			if ( empty( $form_plugins ) ) {
 				return new WP_REST_Response(
-					[ 'message' => 'No supported form plugins found' ],
+					[ 'message' => __( 'No supported form plugins found', 'happilee-forms-connect' ) ],
 					404
 				);
 			}
@@ -207,7 +348,7 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 			return new WP_REST_Response(
 				[
 					'plugins' => $form_plugins,
-					'message' => 'Forms fetched successfully'
+					'message' => __( 'Forms fetched successfully', 'happilee-forms-connect' )
 				],
 				200
 			);
@@ -225,7 +366,7 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 			if ( empty( $form_id ) || empty( $form_type ) ) {
 				return new WP_REST_Response( array(
 					'success' => false,
-					'message' => 'Form ID and Form Type are required'
+					'message' => __( 'Form ID and Form Type are required', 'happilee-forms-connect' )
 				), 400 );
 			}
 
@@ -255,13 +396,13 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 				if ( $updated === false ) {
 					return new WP_REST_Response( array(
 						'success' => false,
-						'message' => 'Failed to update form settings'
+						'message' => __( 'Failed to update form settings', 'happilee-forms-connect' )
 					), 500 );
 				}
 
 				return new WP_REST_Response( array(
 					'success' => true,
-					'message' => 'Form settings updated successfully',
+					'message' => __( 'Form settings updated successfully', 'happilee-forms-connect' ),
 					'action'  => 'updated'
 				), 200 );
 
@@ -283,13 +424,13 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 				if ( $inserted === false ) {
 					return new WP_REST_Response( array(
 						'success' => false,
-						'message' => 'Failed to insert form settings'
+						'message' => __( 'Failed to insert form settings', 'happilee-forms-connect' )
 					), 500 );
 				}
 
 				return new WP_REST_Response( array(
 					'success' => true,
-					'message' => 'Form settings saved successfully',
+					'message' => __( 'Form settings saved successfully', 'happilee-forms-connect' ),
 					'action'  => 'inserted'
 				), 200 );
 			}
@@ -298,11 +439,23 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 		public function wphfc_fetch_form_data( WP_REST_Request $request ) {
 			global $wpdb;
 
-			$form_data = $wpdb->get_results( "SELECT * FROM {$this->table_name}", ARRAY_A );
+			$form_data = $wpdb->get_results(
+				$wpdb->prepare( "SELECT * FROM {$this->table_name} WHERE 1=%d", 1 ),
+				ARRAY_A
+			);
+
+			if ( $wpdb->last_error ) {
+				error_log( 'Happilee Forms Connect DB Error: ' . $wpdb->last_error );
+				return new WP_REST_Response( array(
+					'success' => false,
+					'message' => __( 'Failed to fetch form data', 'happilee-forms-connect' )
+				), 500 );
+			}
+
 			return new WP_REST_Response( array(
 				'success'   => true,
 				'form_data' => $form_data,
-				'message'   => 'Form data fetched successfully'
+				'message'   => __( 'Form data fetched successfully', 'happilee-forms-connect' )
 			), 200 );
 		}
 	}

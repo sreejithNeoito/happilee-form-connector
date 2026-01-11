@@ -52,7 +52,7 @@ const WPHFC_ApiConfiguration = () => {
           <p className="wphfc-text-[14px] wphfc-text-gray-600 wphfc-mt-2">
             Here is a list of all WordPress forms that can be connected through
             our plugin. Each form uses native form hooks to capture submissions
-            and forward the data to your configured API endpoint.
+            and forward the data to happilee platform.
           </p>
         </div>
       </div>

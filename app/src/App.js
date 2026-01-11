@@ -17,7 +17,10 @@ const App = () => {
         <h1 className="wphfc-font-bold wphfc-container wphfc-font-archivo">
           Welcome to Happilee Forms Connect
         </h1>
-        <p>Connect your WordPress forms to Happilee API seamlessly</p>
+        <p>
+          Seamlessly connect your favorite WordPress forms with the Happilee
+          platform.
+        </p>
 
         <div>
           {/* Tab Navigation */}
