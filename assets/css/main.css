@@ -1,4 +1,10 @@
+/*!****************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/postcss-loader/dist/cjs.js??ruleSet[1].rules[1].use[2]!./src/styles.css ***!
+  \****************************************************************************************************************************************/
 @import url(https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap);
+/*!********************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/postcss-loader/dist/cjs.js??ruleSet[1].rules[1].use[2]!./src/styles.css (1) ***!
+  \********************************************************************************************************************************************/
 *, ::before, ::after{
   --tw-border-spacing-x: 0;
   --tw-border-spacing-y: 0;
@@ -157,6 +163,9 @@
 .wphfc-top-1\/2{
   top: 50%;
 }
+.wphfc-z-10{
+  z-index: 10;
+}
 .wphfc-z-50{
   z-index: 50;
 }
@@ -215,6 +224,9 @@
 .wphfc-h-6{
   height: 1.5rem;
 }
+.wphfc-max-h-60{
+  max-height: 15rem;
+}
 .wphfc-w-10{
   width: 2.5rem;
 }
@@ -245,6 +257,9 @@
 .wphfc-max-w-md{
   max-width: 28rem;
 }
+.wphfc-flex-1{
+  flex: 1 1 0%;
+}
 .wphfc-flex-shrink-0{
   flex-shrink: 0;
 }
@@ -253,6 +268,10 @@
 }
 .-wphfc-translate-y-1\/2{
   --tw-translate-y: -50%;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+.wphfc-rotate-180{
+  --tw-rotate: 180deg;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 .wphfc-transform{
@@ -288,11 +307,19 @@
 .wphfc-gap-5{
   gap: 1.25rem;
 }
+.wphfc-space-y-3 > :not([hidden]) ~ :not([hidden]){
+  --tw-space-y-reverse: 0;
+  margin-top: calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(0.75rem * var(--tw-space-y-reverse));
+}
 .wphfc-overflow-hidden{
   overflow: hidden;
 }
 .wphfc-overflow-x-auto{
   overflow-x: auto;
+}
+.wphfc-overflow-y-auto{
+  overflow-y: auto;
 }
 .wphfc-rounded-lg{
   border-radius: 0.5rem;
@@ -308,6 +335,9 @@
 }
 .wphfc-border-b{
   border-bottom-width: 1px;
+}
+.wphfc-border-t{
+  border-top-width: 1px;
 }
 .wphfc-border-none{
   border-style: none;
@@ -336,15 +366,12 @@
   --tw-border-opacity: 1;
   border-color: rgb(254 202 202 / var(--tw-border-opacity, 1));
 }
-.wphfc-bg-\[\#11c204fa\]{
-  background-color: #11c204fa;
-}
-.wphfc-bg-\[\#e20f0f\]{
-  --tw-bg-opacity: 1;
-  background-color: rgb(226 15 15 / var(--tw-bg-opacity, 1));
-}
 .wphfc-bg-black\/50{
   background-color: rgb(0 0 0 / 0.5);
+}
+.wphfc-bg-blue-100{
+  --tw-bg-opacity: 1;
+  background-color: rgb(219 234 254 / var(--tw-bg-opacity, 1));
 }
 .wphfc-bg-blue-50{
   --tw-bg-opacity: 1;
@@ -358,6 +385,10 @@
   --tw-bg-opacity: 1;
   background-color: rgb(240 253 244 / var(--tw-bg-opacity, 1));
 }
+.wphfc-bg-green-600{
+  --tw-bg-opacity: 1;
+  background-color: rgb(22 163 74 / var(--tw-bg-opacity, 1));
+}
 .wphfc-bg-primary{
   --tw-bg-opacity: 1;
   background-color: rgb(11 57 102 / var(--tw-bg-opacity, 1));
@@ -369,6 +400,10 @@
 .wphfc-bg-red-50{
   --tw-bg-opacity: 1;
   background-color: rgb(254 242 242 / var(--tw-bg-opacity, 1));
+}
+.wphfc-bg-red-600{
+  --tw-bg-opacity: 1;
+  background-color: rgb(220 38 38 / var(--tw-bg-opacity, 1));
 }
 .wphfc-bg-transparent{
   background-color: transparent;
@@ -398,6 +433,10 @@
 .wphfc-p-8{
   padding: 2rem;
 }
+.wphfc-px-3{
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
 .wphfc-px-4{
   padding-left: 1rem;
   padding-right: 1rem;
@@ -409,6 +448,10 @@
 .wphfc-px-\[30px\]{
   padding-left: 30px;
   padding-right: 30px;
+}
+.wphfc-py-1{
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
 }
 .wphfc-py-2{
   padding-top: 0.5rem;
@@ -436,6 +479,9 @@
 .wphfc-pr-12{
   padding-right: 3rem;
 }
+.wphfc-pt-4{
+  padding-top: 1rem;
+}
 .wphfc-pt-5{
   padding-top: 1.25rem;
 }
@@ -457,6 +503,10 @@
 }
 .wphfc-text-\[16px\]{
   font-size: 16px;
+}
+.wphfc-text-base{
+  font-size: 1rem;
+  line-height: 1.5rem;
 }
 .wphfc-text-lg{
   font-size: 1.125rem;
@@ -483,8 +533,15 @@
 .wphfc-font-semibold{
   font-weight: 600;
 }
+.wphfc-italic{
+  font-style: italic;
+}
 .wphfc-leading-relaxed{
   line-height: 1.625;
+}
+.wphfc-text-\[\#0B3966\]{
+  --tw-text-opacity: 1;
+  color: rgb(11 57 102 / var(--tw-text-opacity, 1));
 }
 .wphfc-text-\[\#50d96e\]{
   --tw-text-opacity: 1;
@@ -509,6 +566,10 @@
 .wphfc-text-gray-800{
   --tw-text-opacity: 1;
   color: rgb(31 41 55 / var(--tw-text-opacity, 1));
+}
+.wphfc-text-gray-900{
+  --tw-text-opacity: 1;
+  color: rgb(17 24 39 / var(--tw-text-opacity, 1));
 }
 .wphfc-text-green-700{
   --tw-text-opacity: 1;
@@ -554,6 +615,11 @@
 }
 .wphfc-transition-colors{
   transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+.wphfc-transition-transform{
+  transition-property: transform;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
 }
@@ -700,19 +766,42 @@ input:checked + .wphfc-slider:before {
   padding: 8px;
   font-size: 14px;
 }
+.wphfc-select {
+  border: 1px solid #888e96;
+}
+.wphfc-field-mapping {
+  border-top: 1px solid #d1d5db;
+}
 .last\:wphfc-border-b-0:last-child{
   border-bottom-width: 0px;
+}
+.hover\:wphfc-border-gray-400:hover{
+  --tw-border-opacity: 1;
+  border-color: rgb(156 163 175 / var(--tw-border-opacity, 1));
+}
+.hover\:wphfc-bg-blue-50:hover{
+  --tw-bg-opacity: 1;
+  background-color: rgb(239 246 255 / var(--tw-bg-opacity, 1));
+}
+.hover\:wphfc-bg-gray-100:hover{
+  --tw-bg-opacity: 1;
+  background-color: rgb(243 244 246 / var(--tw-bg-opacity, 1));
 }
 .hover\:wphfc-bg-gray-50:hover{
   --tw-bg-opacity: 1;
   background-color: rgb(249 250 251 / var(--tw-bg-opacity, 1));
 }
+.hover\:wphfc-bg-green-700:hover{
+  --tw-bg-opacity: 1;
+  background-color: rgb(21 128 61 / var(--tw-bg-opacity, 1));
+}
+.hover\:wphfc-bg-red-700:hover{
+  --tw-bg-opacity: 1;
+  background-color: rgb(185 28 28 / var(--tw-bg-opacity, 1));
+}
 .hover\:wphfc-text-gray-700:hover{
   --tw-text-opacity: 1;
   color: rgb(55 65 81 / var(--tw-text-opacity, 1));
-}
-.hover\:wphfc-opacity-90:hover{
-  opacity: 0.9;
 }
 .focus\:wphfc-outline-none:focus{
   outline: 2px solid transparent;

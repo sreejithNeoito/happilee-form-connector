@@ -27,7 +27,7 @@ if ( ! class_exists( 'Happilee_HFC_Operation' ) ) {
 
 			// Get ALL configurations, not just distinct hooks
 			$configurations = $wpdb->get_results(
-				"SELECT id, form_id, active_hook, form_type FROM {$this->table_name} WHERE is_enabled = 1",
+				"SELECT id, form_id, active_hook, form_type, connected_fields FROM {$this->table_name} WHERE is_enabled = 1",
 				ARRAY_A
 			);
 
@@ -111,7 +111,7 @@ if ( ! class_exists( 'Happilee_HFC_Operation' ) ) {
 
 			$config = $wpdb->get_row(
 				$wpdb->prepare(
-					"SELECT id, form_id, active_hook, form_type FROM {$this->table_name}
+					"SELECT * FROM {$this->table_name}
 					WHERE form_id = %s
 					AND form_type = %s
 					AND active_hook = %s
@@ -133,99 +133,240 @@ if ( ! class_exists( 'Happilee_HFC_Operation' ) ) {
 		public function wphfc_handle_cf7( $contact_form ) {
 
 			$form_id      = $contact_form->id();
+			$form_name    = get_the_title( $form_id );
 			$current_hook = current_action();
-
-			$config = $this->get_form_configuration( $form_id, 'cf7', $current_hook );
+			$config       = $this->get_form_configuration( $form_id, 'cf7', $current_hook );
 
 			if ( empty( $config ) ) {
+				error_log( 'HFC: No configuration found for CF7 form ID ' . $form_id );
+				return;
+			}
+
+			$connected_fields = $config['connected_fields'];
+			$mapping          = json_decode( $connected_fields, true );
+
+			if ( empty( $mapping ) ) {
+				error_log( 'HFC: No field mappings configured for CF7 form ID ' . $form_id );
 				return;
 			}
 
 			$submission = WPCF7_Submission::get_instance();
+
 			if ( ! $submission ) {
 				return;
 			}
 
-			$this->wphfc_send_to_api(
-				$contact_form,
-				$submission->get_posted_data(),
-				$submission->uploaded_files(),
-				'cf7'
-			);
+			$posted_data = $submission->get_posted_data();
+
+			$api_data                = [];
+			$api_data['form_name']   = sanitize_text_field( $form_name );
+			$api_data['submit_time'] = current_time( 'Y-m-d H:i:s' );
+			foreach ( $mapping as $label => $field_key ) {
+
+				if ( isset( $posted_data[ $field_key ] ) ) {
+					$field_value = $posted_data[ $field_key ];
+
+					// Handle CF7 fields like radio / checkbox (arrays)
+					if ( is_array( $field_value ) ) {
+						$field_value = implode( ', ', $field_value );
+					}
+					$api_data[ $label ] = sanitize_text_field( $field_value );
+				}
+			}
+
+			if ( empty( $api_data ) || count( $api_data ) <= 2 ) {
+				error_log( 'HFC: No mapped field data found for CF7 form ID ' . $form_id );
+				return;
+			}
+
+			$this->wphfc_send_to_api( $api_data );
 
 		}
 
 		/*
 		 * Handle WPForms Submission
 		 */
-		public function wphfc_handle_wpforms( $fields, $entry, $form_data, $entry_id ) {
 
+		public function wphfc_handle_wpforms( $fields, $entry, $form_data, $entry_id ) {
 			$form_id      = isset( $form_data['id'] ) ? $form_data['id'] : 0;
+			$form_name    = isset( $form_data['settings']['form_title'] ) ? $form_data['settings']['form_title'] : 'WPForm #' . $form_id;
 			$current_hook = current_action();
 
 			$config = $this->get_form_configuration( $form_id, 'wpforms', $current_hook );
 
 			if ( empty( $config ) ) {
+				error_log( 'HFC: No configuration found for WPForms form ID ' . $form_id );
 				return;
 			}
 
-			$this->wphfc_send_to_api(
-				$form_data,
-				$fields,
-				array(),
-				'wpforms'
+			$connected_fields = isset( $config['connected_fields'] ) ? $config['connected_fields'] : '';
+			$mapping          = json_decode( $connected_fields, true );
+
+			if ( empty( $mapping ) ) {
+				error_log( 'HFC: No field mappings for WPForms form ID ' . $form_id );
+				return;
+			}
+
+			$api_data                = array();
+			$api_data['form_name']   = sanitize_text_field( $form_name );
+			$api_data['submit_time'] = current_time( 'Y-m-d H:i:s' );
+
+			// Define field types to ignore
+			$ignore_types = array(
+				'recaptcha',
+				'captcha',
+				'hcaptcha',
+				'honeypot',
+				'html',
+				'divider',
+				'pagebreak',
+				'file-upload',
+				'payment-single',
+				'payment-multiple',
+				'payment-checkbox',
+				'payment-select',
+				'credit-card',
+				'richtext',
+				'content',
+				'layout',
+				'entry-preview',
 			);
+
+			foreach ( $mapping as $happilee_field => $wpforms_value ) {
+
+				if ( ! isset( $fields[ $wpforms_value ] ) ) {
+					continue;
+				}
+				$field = $fields[ $wpforms_value ];
+
+				if ( isset( $field['type'] ) && in_array( $field['type'], $ignore_types, true ) ) {
+					continue;
+				}
+
+				if ( isset( $field['name'] ) && $field['name'] === 'Name' && $happilee_field === 'First Name' ) {
+					$first                       = isset( $field['first'] ) ? sanitize_text_field( $field['first'] ) : '';
+					$middle                      = isset( $field['middle'] ) ? sanitize_text_field( $field['middle'] ) : '';
+					$api_data[ $happilee_field ] = trim( $first . ' ' . $middle );
+				} elseif ( isset( $field['name'] ) && $field['name'] === 'Name' && $happilee_field === 'Last Name' ) {
+					$api_data[ $happilee_field ] = isset( $field['last'] ) ? sanitize_text_field( $field['last'] ) : '';
+				} else {
+					$field_value = isset( $field['value'] ) ? $field['value'] : '';
+
+					if ( empty( $field_value ) && $field_value !== '0' ) {
+						continue;
+					}
+
+					if ( is_array( $field_value ) ) {
+						$field_value = implode( ', ', array_map( 'sanitize_text_field', $field_value ) );
+					} else {
+						$field_value = sanitize_text_field( $field_value );
+					}
+
+					$api_data[ $happilee_field ] = $field_value;
+				}
+			}
+
+			if ( count( $api_data ) <= 2 ) {
+				error_log( 'HFC: No mapped field data found for WPForms form ID ' . $form_id );
+				return;
+			}
+
+			$this->wphfc_send_to_api( $api_data );
 		}
 
 		/*
 		 * Handle Ninja Forms Submission
 		 */
-		public function wphfc_handle_ninja_forms( $form_data ) {
-			$form_id = isset( $form_data['form_id'] ) ? $form_data['form_id'] : 0;
 
+		public function wphfc_handle_ninja_forms( $form_data ) {
+			$form_id      = isset( $form_data['form_id'] ) ? $form_data['form_id'] : 0;
 			$current_hook = current_action();
 
 			$config = $this->get_form_configuration( $form_id, 'ninja_forms', $current_hook );
 
 			if ( empty( $config ) ) {
+				error_log( 'HFC: No configuration found for Ninja Forms form ID ' . $form_id );
 				return;
 			}
 
-			$normalized_fields = array();
-			$uploaded_files    = array();
+			$connected_fields = isset( $config['connected_fields'] ) ? $config['connected_fields'] : '';
+			$mapping          = json_decode( $connected_fields, true );
 
-			if ( isset( $form_data['fields'] ) && is_array( $form_data['fields'] ) ) {
-				
-				foreach ( $form_data['fields'] as $field ) {
-					$field_id    = isset( $field['id'] ) ? $field['id'] : '';
-					$field_key   = isset( $field['key'] ) ? $field['key'] : $field_id;
-					$field_label = isset( $field['label'] ) ? $field['label'] : '';
-					$field_value = isset( $field['value'] ) ? $field['value'] : '';
-					$field_type  = isset( $field['type'] ) ? $field['type'] : '';
+			if ( empty( $mapping ) ) {
+				error_log( 'HFC: No field mappings for Ninja Forms form ID ' . $form_id );
+				return;
+			}
 
-					// Store field with its label as key for better readability
-					$normalized_fields[ $field_key ] = $field_value;
+			$submitted_fields = isset( $form_data['fields'] ) ? $form_data['fields'] : array();
 
-					// Handle file uploads
-					if ( $field_type === 'file' && ! empty( $field_value ) ) {
-						$uploaded_files[ $field_key ] = $field_value;
+			if ( empty( $submitted_fields ) ) {
+				error_log( 'HFC: No submitted fields for Ninja Forms form ID ' . $form_id );
+				return;
+			}
+			$form_title = '';
+
+			// Method 1
+			if ( isset( $form_data['settings']['title'] ) && ! empty( $form_data['settings']['title'] ) ) {
+				$form_title = $form_data['settings']['title'];
+			}
+
+			// Method 2:
+			if ( empty( $form_title ) && class_exists( 'Ninja_Forms' ) ) {
+				try {
+					$form = Ninja_Forms()->form( $form_id )->get();
+					if ( $form && method_exists( $form, 'get_setting' ) ) {
+						$title = $form->get_setting( 'title' );
+						if ( ! empty( $title ) ) {
+							$form_title = $title;
+						}
+					}
+				} catch ( Exception $e ) {
+					error_log( 'HFC: Error getting Ninja Forms title: ' . $e->getMessage() );
+				}
+			}
+
+			// Method 3:
+			if ( empty( $form_title ) && isset( $config['form_name'] ) && ! empty( $config['form_name'] ) ) {
+				$form_title = $config['form_name'];
+			}
+
+			// Fallback
+			if ( empty( $form_title ) ) {
+				$form_title = 'Ninja Form #' . $form_id;
+			}
+
+			$api_data                = array();
+			$api_data['form_name']   = sanitize_text_field( $form_title );
+			$api_data['submit_time'] = current_time( 'Y-m-d H:i:s' );
+
+			foreach ( $mapping as $happilee_field => $ninja_field_key ) {
+
+				foreach ( $submitted_fields as $field ) {
+
+					if ( isset( $field['key'] ) && $field['key'] === $ninja_field_key ) {
+						$field_value = isset( $field['value'] ) ? $field['value'] : '';
+
+						if ( empty( $field_value ) && $field_value !== '0' ) {
+							break;
+						}
+						if ( is_array( $field_value ) ) {
+							$field_value = implode( ', ', array_map( 'sanitize_text_field', $field_value ) );
+						} else {
+							$field_value = sanitize_text_field( $field_value );
+						}
+
+						$api_data[ $happilee_field ] = $field_value;
+						break;
 					}
 				}
 			}
 
-			$form_object = array(
-				'id'       => $form_id,
-				'title'    => get_the_title( $form_id ),
-				'settings' => isset( $form_data['settings'] ) ? $form_data['settings'] : array(),
-			);
+			if ( count( $api_data ) <= 2 ) {
+				error_log( 'HFC: No mapped field data found for Ninja Forms form ID ' . $form_id );
+				return;
+			}
 
-			$this->wphfc_send_to_api(
-				$form_object,
-				$normalized_fields,
-				$uploaded_files,
-				'ninja_forms'
-			);
-		
+			$this->wphfc_send_to_api( $api_data );
 		}
 
 		/*
@@ -234,119 +375,103 @@ if ( ! class_exists( 'Happilee_HFC_Operation' ) ) {
 		public function wphfc_handle_forminator( $form_id ) {
 
 			$current_hook = current_action();
-			$entry = Forminator_Form_Entry_Model::get_latest_entry_by_form_id( $form_id );
-			
-			$form_model = Forminator_Form_Model::model()->load( (int) $form_id );
-
-			$field_labels = [];
-
-			if ( ! is_wp_error( $form_model ) && ! empty( $form_model->fields ) ) {
-
-				foreach ( $form_model->fields as $field ) {
-
-					if ( empty( $field->slug ) ) {
-						continue;
-					}
-
-					$field_labels[ $field->slug ] = $field->raw['field_label'] ?? $field->slug;
-				}
-			}
 
 			$config = $this->get_form_configuration( $form_id, 'forminator', $current_hook );
+
 			if ( empty( $config ) ) {
+				error_log( 'HFC: No configuration found for Forminator form ID ' . $form_id );
 				return;
 			}
 
-			$fields = array();
-			$files  = array();
-			
-			foreach ( $entry->meta_data as $field_name => $field_value ) {
+			$connected_fields = isset( $config['connected_fields'] ) ? $config['connected_fields'] : '';
+			$mapping          = json_decode( $connected_fields, true );
 
-				if ( empty( $field_value ) ) {
-					continue;
-				}
-
-				$fields[ $field_labels[ $field_name ] ] = $field_value['value'];
-
-				if( $field_labels[ $field_name ] == "Upload file" ) {
-					$files[] = $field_value['value'];
-				}
+			if ( empty( $mapping ) ) {
+				error_log( 'HFC: No field mappings for Forminator form ID ' . $form_id );
+				return;
 			}
 
-			$form_object = array(
-				'id'       => $form_model->id,
-				'title'    => $form_model->name
-			);
+			$form_model = Forminator_Form_Model::model()->load( (int) $form_id );
 
-			$this->wphfc_send_to_api(
-				$form_object,
-				$fields,
-				$files,
-				'forminator'
-			);
+			if ( is_wp_error( $form_model ) || empty( $form_model ) ) {
+				error_log( 'HFC: Failed to load Forminator form model for ID ' . $form_id );
+				return;
+			}
+
+			$submitted_data = isset( $_POST ) ? $_POST : [];
+
+			$api_data                = [];
+			$api_data['form_name']   = $form_model->name;
+			$api_data['submit_time'] = current_time( 'Y-m-d H:i:s' );
+
+			foreach ( $mapping as $lablel => $field_key ) {
+				if ( isset( $submitted_data[ $field_key ] ) ) {
+					$field_value = $submitted_data[ $field_key ];
+
+					// Handle array values (checkboxes, multi-select, etc.)
+					if ( is_array( $field_value ) ) {
+						$field_value = implode( ', ', $field_value );
+					}
+					$api_data[ $lablel ] = sanitize_text_field( $field_value );
+				}
+
+			}
+
+			if ( empty( $api_data ) || count( $api_data ) <= 2 ) {
+				error_log( 'HFC: No mapped field data found for Forminator form ID ' . $form_id );
+				return;
+			}
+
+			$this->wphfc_send_to_api( $api_data );
 		}
-
-			
 
 		/*
 		 * Handle API Communication
 		 */
-		private function wphfc_send_to_api( $form_object, $posted_data, $uploaded_files, $form_type ) {
+		private function wphfc_send_to_api( $api_data ) {
 
 			$api_instance = Happilee_HFC_Api::get_instance();
 			$api_endpoint = $api_instance->get_api_endpoint();
-			
-			$api_key      = get_option( 'wphfc_api_key', '' );
+
+			$api_key = get_option( 'wphfc_api_key', '' );
 
 			if ( empty( $api_endpoint ) ) {
 				error_log( 'HFC API Error: API endpoint is not configured' );
 				return;
 			}
-			// Prepare form details based on form type
-			if ( $form_type === 'cf7' ) {
-				$form_id   = $form_object->id();
-				$form_name = $form_object->title();
-			} else {
-				$form_id   = $form_object['id'];
-				$form_name = $form_object['settings']['form_title'];
+
+			if ( empty( $api_key ) ) {
+				error_log( 'HFC API Error: API key is not configured' );
+				return;
 			}
 
-			// Prepare payload
-			$payload = array(
-				'form_id'   => $form_id,
-				'form_name' => $form_name,
-				'fields'    => $posted_data,
-				'files'     => $uploaded_files,
-				'source'    => $form_type,
-				'site_url'  => get_site_url(),
-			);
-
-			$args = array(
-				'method'  => 'POST',
-				'timeout' => 30,
+			$response = wp_remote_post( $api_endpoint, array(
 				'headers' => array(
-					'Content-Type' => 'application/json',
+					'Authorization' => 'Bearer ' . $api_key,
+					'Content-Type'  => 'application/json',
 				),
-				'body'    => wp_json_encode( $payload ),
-			);
+				'body'    => wp_json_encode( $api_data ),
+				'timeout' => 30,
+			) );
 
-			// Add API key if provided
-			if ( ! empty( $api_key ) ) {
-				$args['headers']['Authorization'] = 'Bearer ' . $api_key;
-			}
-
-			$response = wp_remote_post( $api_endpoint, $args );
-
-			// Log API errors
+			// Handle response
 			if ( is_wp_error( $response ) ) {
 				error_log( 'HFC API Error: ' . $response->get_error_message() );
-			} else {
-				$response_code = wp_remote_retrieve_response_code( $response );
-				if ( $response_code !== 200 ) {
-					error_log( 'HFC API Error: Response code ' . $response_code );
-					error_log( 'HFC API Response: ' . wp_remote_retrieve_body( $response ) );
-				}
+				return false;
 			}
+
+			$response_code = wp_remote_retrieve_response_code( $response );
+			$response_body = wp_remote_retrieve_body( $response );
+
+			if ( $response_code !== 200 ) {
+				error_log( sprintf(
+					'HFC API Error: Status %d - %s',
+					$response_code,
+					$response_body
+				) );
+				return false;
+			}
+			return true;
 		}
 	}
 }

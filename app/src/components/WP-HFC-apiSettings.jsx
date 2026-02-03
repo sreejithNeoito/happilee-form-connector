@@ -22,7 +22,7 @@ const WPHFC_ApiConfiguration = () => {
             "X-WP-Nonce": happileeConnect.wphfc_nonce,
           },
           credentials: "same-origin",
-        }
+        },
       );
 
       if (response.ok) {
@@ -85,8 +85,8 @@ const WPHFC_ApiConfiguration = () => {
               message.includes("⚠️")
                 ? "wphfc-bg-red-50 wphfc-text-red-700 wphfc-border wphfc-border-red-200 "
                 : message.includes("✅")
-                ? "wphfc-bg-green-50 wphfc-text-green-700 wphfc-border wphfc-border-green-200"
-                : "wphfc-bg-blue-50 wphfc-text-blue-700 wphfc-border wphfc-border-blue-200"
+                  ? "wphfc-bg-green-50 wphfc-text-green-700 wphfc-border wphfc-border-green-200"
+                  : "wphfc-bg-blue-50 wphfc-text-blue-700 wphfc-border wphfc-border-blue-200"
             }`}>
             {message}
           </div>
@@ -107,6 +107,7 @@ const WPHFC_ApiConfiguration = () => {
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="Enter your API key"
               disabled={isLoading}
+              autoComplete="new-password"
               className="wphfc-w-full wphfc-px-4 wphfc-border wphfc-py-2.5 wphfc-border-gray-300 wphfc-rounded-lg focus:wphfc-ring-2 focus:wphfc-ring-blue-500 focus:wphfc-outline-none wphfc-pr-12 disabled:wphfc-bg-gray-100 disabled:wphfc-cursor-not-allowed"
             />
             <button

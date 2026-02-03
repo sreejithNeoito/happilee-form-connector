@@ -145,3 +145,9 @@ input:checked + .wphfc-slider:before {
   padding: 8px;
   font-size: 14px;
 }
+.wphfc-select {
+  border: 1px solid #888e96;
+}
+.wphfc-field-mapping {
+  border-top: 1px solid #d1d5db;
+}

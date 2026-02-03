@@ -17,7 +17,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'HAPPILEE_FORMS_VERSION', '1.0.0' );
-define( 'HFC_END_POINT', 'https://webhook.site/b069e489-2801-47b5-9b5b-598c61e9bca1' );
 define( 'HAPPILEE_FORMS_PLUGIN_FILE', __FILE__ );
 define( 'HAPPILEE_FORMS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HAPPILEE_FORMS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -41,6 +40,7 @@ function happilee_forms_connect_uninstall() {
 	require_once HAPPILEE_FORMS_PLUGIN_DIR . 'includes/class-hfc-db.php';
 	$db = new happilee_HFC_DB();
 	$db->hfc_delete_dataTable();
+	delete_option( 'wphfc_api_key' );
 }
 register_uninstall_hook( HAPPILEE_FORMS_PLUGIN_FILE, 'happilee_forms_connect_uninstall' );
 

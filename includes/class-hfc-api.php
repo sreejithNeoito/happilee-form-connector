@@ -12,7 +12,7 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 		private $table_name;
 		private $encryption_key;
 
-		const API_ENDPOINT = 'https://webhook.site/ff3aabd0-cf77-4043-a2b4-9075ad225557';
+		const API_ENDPOINT = 'https://webhook.site/70ea87ef-98d1-4d89-ab77-8457951a70a1';
 
 		public static function get_instance() {
 			if ( self::$instance === null ) {
@@ -87,6 +87,10 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 				return '';
 			}
 
+			if ( empty( $this->encryption_key ) ) {
+				throw new Exception( 'Encryption key is missing' );
+			}
+
 			$decrypted = openssl_decrypt( $encrypted, $method, $this->encryption_key, 0, $iv );
 
 			if ( false === $decrypted ) {
@@ -123,6 +127,12 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 			register_rest_route( 'wphfc/v1', '/save-form-settings', array(
 				'methods'             => 'POST',
 				'callback'            => array( $this, 'wphfc_save_form_settings' ),
+				'permission_callback' => array( $this, 'check_permission' ),
+			) );
+
+			register_rest_route( 'wphfc/v1', '/fetch-form-fields', array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'wphfc_get_form_fields' ),
 				'permission_callback' => array( $this, 'check_permission' ),
 			) );
 
@@ -271,25 +281,26 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 				];
 			}
 
-			// WPForms
-			if ( function_exists( 'wpforms' ) ) {
-				$wpforms_forms = wpforms()->form->get( '', [ 'orderby' => 'title' ] );
-				$wpforms_list  = [];
+			// Forminator
+			if ( class_exists( 'Forminator_API' ) ) {
+				$forminator_forms = Forminator_API::get_forms();
 
-				if ( ! empty( $wpforms_forms ) ) {
-					foreach ( $wpforms_forms as $form ) {
-						$wpforms_list[] = [
-							'id'   => absint( $form->ID ),
-							'name' => sanitize_text_field( $form->post_title ),
+				$forminator_list = [];
+
+				if ( ! empty( $forminator_forms ) ) {
+					foreach ( $forminator_forms as $form ) {
+						$forminator_list[] = [
+							'id'   => absint( $form->id ),
+							'name' => sanitize_text_field( $form->name ),
 						];
 					}
 				}
 
 				$form_plugins[] = [
-					'type'        => 'wpforms',
-					'displayName' => 'WPForms',
-					'forms'       => $wpforms_list,
-					'count'       => count( $wpforms_list )
+					'type'        => 'forminator',
+					'displayName' => 'Forminator',
+					'forms'       => $forminator_list,
+					'count'       => count( $forminator_list )
 				];
 			}
 
@@ -314,27 +325,26 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 					'count'       => count( $ninja_list )
 				];
 			}
-            
-			// Forminator
-			if ( class_exists( 'Forminator_API' ) ) {
-    		   $forminator_forms = Forminator_API::get_forms();
 
-				$forminator_list = [];
+			// WPForms
+			if ( function_exists( 'wpforms' ) ) {
+				$wpforms_forms = wpforms()->form->get( '', [ 'orderby' => 'title' ] );
+				$wpforms_list  = [];
 
-				if ( ! empty( $forminator_forms ) ) {
-					foreach ( $forminator_forms as $form ) {
-						$forminator_list[] = [
-							'id'   => absint( $form->id ),
-							'name' => sanitize_text_field( $form->name ),
+				if ( ! empty( $wpforms_forms ) ) {
+					foreach ( $wpforms_forms as $form ) {
+						$wpforms_list[] = [
+							'id'   => absint( $form->ID ),
+							'name' => sanitize_text_field( $form->post_title ),
 						];
 					}
-				}	
+				}
 
 				$form_plugins[] = [
-					'type'        => 'forminator',
-					'displayName' => 'Forminator',
-					'forms'       => $forminator_list,
-					'count'       => count( $forminator_list )
+					'type'        => 'wpforms',
+					'displayName' => 'WPForms',
+					'forms'       => $wpforms_list,
+					'count'       => count( $wpforms_list )
 				];
 			}
 
@@ -354,14 +364,259 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 			);
 		}
 
-		public function wphfc_save_form_settings( WP_REST_Request $request ) {
-			global $wpdb;
+		public function wphfc_get_form_fields( WP_REST_Request $request ) {
+			$form_id   = $request->get_param( 'form_id' );
+			$form_type = $request->get_param( 'form_type' );
 
+			if ( empty( $form_id ) || empty( $form_type ) ) {
+				return new WP_REST_Response( array(
+					'success' => false,
+					'message' => __( 'Form ID and Form Type are required', 'happilee-forms-connect' )
+				), 400 );
+			}
+
+			if ( $form_type == 'cf7' ) {
+				$form_id      = absint( $form_id );
+				$contact_form = WPCF7_ContactForm::get_instance( $form_id );
+
+				if ( ! $contact_form ) {
+					return new WP_REST_Response( array(
+						'success' => false,
+						'message' => __( 'Form not found', 'happilee-forms-connect' )
+					), 404 );
+				}
+
+				$form_tags = $contact_form->scan_form_tags();
+				$fields    = [];
+
+				foreach ( $form_tags as $tag ) {
+					// Skip tags without names (like submit buttons)
+					if ( empty( $tag->name ) ) {
+						continue;
+					}
+
+					$fields[] = array(
+						'name' => sanitize_text_field( $tag->name ),
+					);
+				}
+
+				return new WP_REST_Response( array(
+					'success' => true,
+					'fields'  => $fields,
+					'message' => __( 'Form fields fetched successfully', 'happilee-forms-connect' )
+				), 200 );
+			}
+
+			// ----------------- wpform ----------------
+			if ( $form_type == 'wpforms' ) {
+
+				$form_id = absint( $form_id );
+				$wpform  = wpforms()->form->get( $form_id );
+
+				if ( ! $wpform ) {
+					return new WP_REST_Response( array(
+						'success' => false,
+						'message' => __( 'Form not found', 'happilee-forms-connect' )
+					), 404 );
+				}
+
+				$form_data = json_decode( $wpform->post_content, true );
+
+				if ( empty( $form_data['fields'] ) ) {
+					return new WP_REST_Response( array(
+						'success' => false,
+						'message' => __( 'No fields found in this form', 'happilee-forms-connect' )
+					), 404 );
+				}
+
+				$fields = [];
+
+				foreach ( $form_data['fields'] as $field ) {
+					$skip_types = array( 'pagebreak', 'divider', 'html', 'captcha' );
+
+					if ( in_array( $field['type'], $skip_types ) ) {
+						continue;
+					}
+
+					$fields[] = array(
+						'id'    => sanitize_text_field( $field['id'] ),
+						'name'  => sanitize_text_field( $field['id'] ),
+						'label' => sanitize_text_field( $field['label'] ),
+						'type'  => sanitize_text_field( $field['type'] ),
+					);
+				}
+
+				return new WP_REST_Response( array(
+					'success' => true,
+					'fields'  => $fields,
+					'message' => __( 'Form fields fetched successfully', 'happilee-forms-connect' )
+				), 200 );
+			}
+
+			// ----------------- Forminator ----------------------
+
+			if ( $form_type == 'forminator' ) {
+				$form_id    = absint( $form_id );
+				$forminator = Forminator_API::get_form( $form_id );
+
+				if ( ! $forminator ) {
+					return new WP_REST_Response( array(
+						'success' => false,
+						'message' => __( 'Form not found', 'happilee-forms-connect' )
+					), 404 );
+				}
+
+				// Get form fields
+				$form_fields = $forminator->get_fields();
+				if ( empty( $form_fields ) ) {
+					return new WP_REST_Response( array(
+						'success' => false,
+						'message' => __( 'No fields found in this form', 'happilee-forms-connect' )
+					), 404 );
+				}
+
+				$fields = [];
+
+				// Skip these field types
+				$skip_types = array( 'section', 'page', 'html', 'captcha', 'stripe', 'paypal', 'upload' );
+
+				foreach ( $form_fields as $field ) {
+					$field_type  = $field->__get( 'type' );
+					$element_id  = $field->slug;
+					$field_label = $field->__get( 'field_label' );
+
+					// Skip unwanted field types or empty IDs
+					if ( in_array( $field_type, $skip_types ) || empty( $element_id ) ) {
+						continue;
+					}
+
+					// Handle Name field - split into first and last name
+					if ( $field_type === 'name' ) {
+						$fields[] = array(
+							'id'    => sanitize_text_field( $element_id ),
+							'name'  => sanitize_text_field( $element_id ),
+							'label' => sanitize_text_field( $field_label ),
+							'type'  => 'name',
+						);
+					}
+					// Regular fields (email, phone, textarea, text, number, select, radio, checkbox, etc.)
+					else {
+						$fields[] = array(
+							'id'    => sanitize_text_field( $element_id ),
+							'name'  => sanitize_text_field( $element_id ),
+							'label' => sanitize_text_field( $field_label ),
+							'type'  => sanitize_text_field( $field_type ),
+						);
+					}
+				}
+
+				return new WP_REST_Response( array(
+					'success' => true,
+					'fields'  => $fields,
+					'message' => __( 'Form fields fetched successfully', 'happilee-forms-connect' )
+				), 200 );
+			}
+
+			// ----------------- Ninja Forms ----------------------
+
+			if ( $form_type == 'ninja_forms' ) {
+				$form_id    = absint( $form_id );
+				$ninja_form = Ninja_Forms()->form( $form_id )->get_fields();
+
+				if ( ! $ninja_form ) {
+					return new WP_REST_Response( array(
+						'success' => false,
+						'message' => __( 'Form not found', 'happilee-forms-connect' )
+					), 404 );
+				}
+
+				$fields = [];
+
+				// Skip field types
+				$skip_types = array(
+					'submit',
+					'hr',
+					'html',
+					'divider',
+					'recaptcha',
+					'spam',
+					'hidden',
+					'creditcard',
+					'creditcardcvc',
+					'creditcardexpiration',
+					'creditcardfullname',
+					'creditcardnumber',
+					'creditcardzip',
+					'product',
+					'quantity',
+					'shipping',
+					'total',
+					'password',
+					'password_confirm',
+					'save',
+					'note',
+					'starrating' // optional - remove if you want to include ratings
+				);
+
+				foreach ( $ninja_form as $field ) {
+					$field_type  = $field->get_setting( 'type' );
+					$field_key   = $field->get_setting( 'key' );
+					$field_label = $field->get_setting( 'label' );
+
+					// Skip unwanted field types or fields without labels
+					if ( in_array( $field_type, $skip_types ) || empty( $field_label ) ) {
+						continue;
+					}
+
+					$fields[] = array(
+						'id'    => $field->get_id(),
+						'name'  => $field_key,
+						'label' => sanitize_text_field( $field_label ),
+						'type'  => sanitize_text_field( $field_type ),
+					);
+				}
+
+				if ( empty( $fields ) ) {
+					return new WP_REST_Response( array(
+						'success' => false,
+						'message' => __( 'No usable fields found in this form', 'happilee-forms-connect' )
+					), 404 );
+				}
+
+				return new WP_REST_Response( array(
+					'success' => true,
+					'fields'  => $fields,
+					'message' => __( 'Form fields fetched successfully', 'happilee-forms-connect' )
+				), 200 );
+			}
+
+			return new WP_REST_Response( array(
+				'success' => false,
+				'message' => __( 'Unsupported form type', 'happilee-forms-connect' )
+			), 400 );
+		}
+
+		public function wphfc_save_form_settings( WP_REST_Request $request ) {
+
+			global $wpdb;
 			$form_id    = sanitize_text_field( $request->get_param( 'form_id' ) );
 			$form_name  = sanitize_text_field( $request->get_param( 'form_name' ) );
 			$form_type  = sanitize_text_field( $request->get_param( 'form_type' ) );
 			$activeHook = sanitize_text_field( $request->get_param( 'active_hook' ) );
 			$is_enabled = intval( $request->get_param( 'is_enabled' ) );
+			$form_field = $request->get_param( 'form_field' );
+
+			if ( is_array( $form_field ) && ! empty( $form_field ) ) {
+				$sanitized_form_field = [];
+				foreach ( $form_field as $key => $value ) {
+					$sanitized_key                          = sanitize_text_field( $key );
+					$sanitized_value                        = sanitize_text_field( $value );
+					$sanitized_form_field[ $sanitized_key ] = $sanitized_value;
+				}
+				$form_field_json = wp_json_encode( $sanitized_form_field );
+			} else {
+				$form_field_json = '{}';
+			}
 
 			if ( empty( $form_id ) || empty( $form_type ) ) {
 				return new WP_REST_Response( array(
@@ -381,15 +636,16 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 				$updated = $wpdb->update(
 					$this->table_name,
 					array(
-						'form_name'   => $form_name,
-						'is_enabled'  => $is_enabled,
-						'active_hook' => $activeHook,
+						'form_name'        => $form_name,
+						'is_enabled'       => $is_enabled,
+						'active_hook'      => $activeHook,
+						'connected_fields' => $form_field_json,
 					),
 					array(
 						'form_id'   => $form_id,
 						'form_type' => $form_type,
 					),
-					array( '%s', '%d', '%s' ),
+					array( '%s', '%d', '%s', '%s' ),
 					array( '%s', '%s' )
 				);
 
@@ -411,14 +667,15 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 				$inserted = $wpdb->insert(
 					$this->table_name,
 					array(
-						'form_id'     => $form_id,
-						'form_name'   => $form_name,
-						'form_type'   => $form_type,
-						'is_enabled'  => $is_enabled,
-						'active_hook' => $activeHook,
-						'created_at'  => current_time( 'mysql' ),
+						'form_id'          => $form_id,
+						'form_name'        => $form_name,
+						'form_type'        => $form_type,
+						'is_enabled'       => $is_enabled,
+						'active_hook'      => $activeHook,
+						'connected_fields' => $form_field_json,
+						'created_at'       => current_time( 'mysql' ),
 					),
-					array( '%s', '%s', '%s', '%d', '%s', '%s' )
+					array( '%s', '%s', '%s', '%d', '%s', '%s', '%s' )
 				);
 
 				if ( $inserted === false ) {
@@ -445,7 +702,6 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 			);
 
 			if ( $wpdb->last_error ) {
-				error_log( 'Happilee Forms Connect DB Error: ' . $wpdb->last_error );
 				return new WP_REST_Response( array(
 					'success' => false,
 					'message' => __( 'Failed to fetch form data', 'happilee-forms-connect' )

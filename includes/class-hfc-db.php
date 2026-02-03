@@ -52,6 +52,7 @@ if ( ! class_exists( 'happilee_HFC_DB' ) ) {
 				is_enabled tinyint(1) DEFAULT 0 NOT NULL,
 				created_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
 				active_hook varchar(255) DEFAULT '' NOT NULL,
+				connected_fields longtext NOT NULL,
 				PRIMARY KEY  (id)
 			) $charset_collate;";
 

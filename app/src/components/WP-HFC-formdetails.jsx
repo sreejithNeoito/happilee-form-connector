@@ -7,6 +7,7 @@ const WPHFC_FormDetails = ({ activeForm }) => {
   const [showModal, setShowModal] = useState(false);
   const [formStates, setFormStates] = useState({});
   const [activeHooks, setActiveHooks] = useState({});
+  const [formFields, setFormFields] = useState({});
 
   useEffect(() => {
     if (activeForm) {
@@ -25,26 +26,26 @@ const WPHFC_FormDetails = ({ activeForm }) => {
             "X-WP-Nonce": happileeConnect.wphfc_nonce,
           },
           credentials: "same-origin",
-        }
+        },
       );
 
       if (response.ok) {
         const data = await response.json();
-
         if (data.success && data.form_data) {
           const states = {};
           const hooks = {};
-
+          const formFields = {};
           data.form_data.forEach((form) => {
             const formKey = String(form.form_id);
             const isEnabled = form.is_enabled === 1 || form.is_enabled === "1";
-
+            formFields[formKey] = form.connected_fields;
             states[formKey] = isEnabled;
             hooks[formKey] = form.active_hook || "";
           });
 
           setFormStates(states);
           setActiveHooks(hooks);
+          setFormFields(formFields);
         }
       }
     } catch (error) {
@@ -108,7 +109,7 @@ const WPHFC_FormDetails = ({ activeForm }) => {
             active_hook: activeHook,
           }),
           credentials: "same-origin",
-        }
+        },
       );
 
       const data = await response.json();
@@ -179,7 +180,7 @@ const WPHFC_FormDetails = ({ activeForm }) => {
                     <th className="wphfc-p-3 wphfc-text-left wphfc-font-semibold wphfc-text-gray-700 wphfc-w-12">
                       #
                     </th>
-                    <th className="wphfc-p-3 wphfc-text-left wphfc-font-semibold wphfc-text-gray-700">
+                    <th className="wphfc-p-3 wphfc-text-left wphfc-font-semibold wphfc-text-gray-700 wphfc-w-40">
                       Form Name
                     </th>
                     <th className="wphfc-p-3 wphfc-text-left wphfc-font-semibold wphfc-text-gray-700 wphfc-w-32">
@@ -188,7 +189,7 @@ const WPHFC_FormDetails = ({ activeForm }) => {
                     <th className="wphfc-p-3 wphfc-text-center wphfc-font-semibold wphfc-text-gray-700 wphfc-w-40">
                       Hook Settings
                     </th>
-                    <th className="wphfc-p-3 wphfc-text-center wphfc-font-semibold wphfc-text-gray-700 wphfc-w-40">
+                    <th className="wphfc-p-3 wphfc-text-center wphfc-font-semibold wphfc-text-gray-700 wphfc-w-32">
                       Status
                     </th>
                   </tr>
@@ -197,7 +198,6 @@ const WPHFC_FormDetails = ({ activeForm }) => {
                   {activeForm.forms.map((form, index) => {
                     const formKey = String(form.id);
                     const isChecked = formStates[formKey] || false;
-
                     return (
                       <tr
                         key={form.id}
@@ -255,7 +255,7 @@ const WPHFC_FormDetails = ({ activeForm }) => {
                                   handleToggle(
                                     form.id,
                                     activeForm.type,
-                                    form.name
+                                    form.name,
                                   )
                                 }
                                 className="toggle-input"
@@ -305,6 +305,7 @@ const WPHFC_FormDetails = ({ activeForm }) => {
               onClose={handleModalClose}
               activeHook={activeHooks[String(selectedFormId)] || ""}
               formName={selectedFormName}
+              CurrentFields={formFields}
             />
           )}
         </div>
