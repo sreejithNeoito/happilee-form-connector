@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from "react";
-
+import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 const WPHFC_HookModal = ({
   selectedFormId,
   formType,
@@ -14,6 +16,44 @@ const WPHFC_HookModal = ({
   const [formFields, setFormFields] = useState([]);
   const [fieldMappings, setFieldMappings] = useState({});
   const [openDropdown, setOpenDropdown] = useState(null);
+  const [isHookDropdownOpen, setIsHookDropdownOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const hookDropdownRef = useRef(null);
+  const fieldDropdownRefs = useRef({});
+
+  // Toast Notification
+  const notify = (message, type = "success") => {
+    toast[type](message, {
+      position: "top-right",
+      autoClose: 3000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+    });
+  };
+
+  //Close drpdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        hookDropdownRef.current &&
+        !hookDropdownRef.current.contains(event.target)
+      ) {
+        setIsHookDropdownOpen(false);
+      }
+      if (openDropdown) {
+        const currentRef = fieldDropdownRefs.current[openDropdown];
+        if (currentRef && !currentRef.contains(event.target)) {
+          setOpenDropdown(null);
+        }
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isHookDropdownOpen, openDropdown]);
 
   useEffect(() => {
     getFormFields(selectedFormId, formType);
@@ -56,16 +96,11 @@ const WPHFC_HookModal = ({
         },
         { value: "wpforms_process_before", label: "Before Process" },
         { value: "wpforms_process_after", label: "After Process" },
-        { value: "wpforms_entry_save", label: "Entry Save" },
       ],
       ninja_forms: [
         {
           value: "ninja_forms_after_submission",
-          label: "After Submission ( Recommended )",
-        },
-        {
-          value: "ninja_forms_submit_data",
-          label: "Submit Data ( Before Processing )",
+          label: "After Submission",
         },
       ],
       forminator: [
@@ -74,12 +109,8 @@ const WPHFC_HookModal = ({
           label: "After Save Entry ( Recommended )",
         },
         {
-          value: "forminator_form_ajax_submit_response",
-          label: "AJAX Submit Response",
-        },
-        {
-          value: "forminator_form_submit_response",
-          label: "Form Submit Response ( For non-AJAX forms )",
+          value: "forminator_custom_form_submit_before_set_fields",
+          label: "Before Set Fields",
         },
       ],
     };
@@ -135,10 +166,23 @@ const WPHFC_HookModal = ({
     }
   }, [activeHook, formType]);
 
-  const handleSelectChange = (e) => {
-    const newValue = e.target.value;
-    setSelectedHook(newValue);
+  const handleClose = (shouldRefresh) => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose(shouldRefresh);
+    }, 300);
+  };
+
+  const handleHookSelect = (hookValue) => {
+    setSelectedHook(hookValue);
+    setIsHookDropdownOpen(false);
     setError("");
+  };
+
+  const getSelectedHookLabel = () => {
+    const availableHooks = getAvailableHooks(formType);
+    const hook = availableHooks.find((h) => h.value === selectedHook);
+    return hook ? hook.label : "Please Select the Hook";
   };
 
   const handleFieldMapping = (happileeField, formField) => {
@@ -173,7 +217,6 @@ const WPHFC_HookModal = ({
   const getMappedFieldLabel = (happileeField) => {
     const mappedValue = fieldMappings[happileeField];
     if (!mappedValue) return happileeField;
-
     // Find the form field that matches this mapping
     const formField = formFields.find((f) => {
       switch (formType) {
@@ -245,12 +288,15 @@ const WPHFC_HookModal = ({
       const data = await response.json();
 
       if (response.ok && data.success) {
-        onClose(true);
+        notify("Settings saved successfully!", "success");
+        setTimeout(() => {
+          handleClose(true);
+        }, 500);
       } else {
-        setError(data.message || "Failed to save hook");
+        notify(data.message || "Failed to save hook", "error");
       }
     } catch (error) {
-      setError("An error occurred while saving the hook");
+      notify("An error occurred while saving the hook", "error");
     } finally {
       setIsSaving(false);
     }
@@ -259,166 +305,235 @@ const WPHFC_HookModal = ({
   const availableHooks = getAvailableHooks(formType);
 
   return (
-    <div className="wphfc-fixed wphfc-inset-0 wphfc-flex wphfc-items-center wphfc-justify-center wphfc-bg-black/50 wphfc-z-50">
-      <div className="wphfc_hook_popup wphfc-max-w-md wphfc-w-full wphfc-mx-4 wphfc-bg-white wphfc-p-6 wphfc-rounded-lg wphfc-shadow-lg">
-        <div className="wphfc-flex wphfc-justify-between wphfc-items-center wphfc-mb-4">
-          <h3 className="wphfc-text-lg wphfc-font-semibold wphfc-m-0">
-            Select Hook for Form ID: {selectedFormId}
-          </h3>
-          <button
-            className="wphfc-modal-close wphfc-p-1 wphfc-bg-transparent wphfc-border-none wphfc-cursor-pointer"
-            onClick={() => onClose(false)}
-            disabled={isSaving}>
-            <svg
-              className="wphfc-w-5 wphfc-h-5"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M17 7L7 17M7 7L17 17"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
+    <>
+      {/* Toast Container rendered via Portal to document.body */}
+      {createPortal(
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={true}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+          style={{ zIndex: 9999999 }}
+        />,
+        document.body,
+      )}
+      <div
+        className={`wphfc-modal-backdrop wphfc-fixed wphfc-inset-0 wphfc-flex wphfc-items-center wphfc-justify-center wphfc-bg-black/50 wphfc-z-50 ${isClosing ? "wphfc-opacity-0" : "wphfc-opacity-100"}`}
+        style={{ zIndex: 100000 }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget && !isSaving) {
+            handleClose(false);
+          }
+        }}>
+        <div
+          className={`wphfc_hook_popup wphfc-max-w-md wphfc-w-full wphfc-mx-4 wphfc-bg-white wphfc-p-6 wphfc-rounded-lg wphfc-shadow-lg wphfc-transition-transform wphfc-duration-300 ${
+            isClosing
+              ? "wphfc-scale-95 wphfc-opacity-0"
+              : "wphfc-scale-100 wphfc-opacity-100"
+          }`}>
+          <div className="wphfc-flex wphfc-justify-between wphfc-items-center wphfc-mb-4">
+            <h3 className="wphfc-text-lg wphfc-font-semibold wphfc-m-0">
+              Select Hook for Form ID: {selectedFormId}
+            </h3>
+            <button
+              className="wphfc-modal-close wphfc-p-1 wphfc-bg-transparent wphfc-border-none wphfc-cursor-pointer"
+              onClick={() => handleClose(false)}
+              disabled={isSaving}>
+              <svg
+                className="wphfc-w-5 wphfc-h-5"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M17 7L7 17M7 7L17 17"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
 
-        <div className="wphfc-mb-4">
-          <label className="wphfc-block wphfc-text-sm wphfc-font-medium wphfc-mb-2 wphfc-text-gray-700">
-            Form Name: <strong>{formName}</strong>
-          </label>
+          <div className="wphfc-mb-4 wphfc-relative" ref={hookDropdownRef}>
+            <label className="wphfc-block wphfc-text-sm wphfc-font-medium wphfc-mb-2 wphfc-text-gray-700">
+              Form Name: <strong>{formName}</strong>
+            </label>
 
-          <select
-            className="wphfc-w-full wphfc-modal-select wphfc-p-2 wphfc-border wphfc-border-gray-300 wphfc-rounded-md focus:wphfc-outline-none focus:wphfc-ring-2 focus:wphfc-ring-blue-500"
-            value={selectedHook}
-            onChange={handleSelectChange}
-            disabled={isSaving}>
-            {availableHooks.map((hook) => (
-              <option key={hook.value} value={hook.value}>
-                {hook.label}
-              </option>
-            ))}
-          </select>
-        </div>
+            {/* --------------------------- Hook Selection Dropdown ------------------------ */}
+            <button
+              type="button"
+              className="wphfc-w-full wphfc-items-center wphfc-bg-white wphfc-flex wphfc-justify-between wphfc-modal-select wphfc-p-2 wphfc-select wphfc-rounded-md"
+              onClick={() => setIsHookDropdownOpen(!isHookDropdownOpen)}
+              disabled={isSaving}>
+              <span
+                className={
+                  selectedHook ? "wphfc-text-gray-900" : "wphfc-text-gray-500"
+                }>
+                {getSelectedHookLabel()}
+              </span>
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className={`wphfc-transition-transform`}>
+                <path
+                  d="M6 9L12 15L18 9"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            {isHookDropdownOpen && (
+              <ul className="wphfc-w-full wphfc-max-h-60 wphfc-bg-white wphfc-rounded-md wphfc-absolute wphfc-z-10 wphfc-shadow-xl wphfc-py-1 wphfc-mt-1 wphfc-border wphfc-border-gray-300 wphfc-overflow-y-auto">
+                {availableHooks.map((hook) => (
+                  <li key={hook.value}>
+                    <button
+                      type="button"
+                      className={`wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-text-left wphfc-text-sm hover:wphfc-bg-blue-50 wphfc-cursor-pointer wphfc-border-none wphfc-bg-transparent ${
+                        selectedHook === hook.value
+                          ? "wphfc-bg-blue-100 wphfc-text-[#0B3966] wphfc-font-medium"
+                          : "wphfc-text-gray-700"
+                      }`}
+                      onClick={() => handleHookSelect(hook.value)}>
+                      {hook.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {/* --------------------------- Hook Selection Dropdown ------------------------ */}
+          </div>
 
-        {error && (
-          <div className="wphfc-mb-4 wphfc-p-3 wphfc-bg-red-50 wphfc-border wphfc-border-red-200 wphfc-rounded-md">
-            <p className="wphfc-text-sm wphfc-text-red-600 wphfc-m-0">
-              {error}
+          {error && (
+            <div className="wphfc-mb-4 wphfc-p-3 wphfc-bg-red-50 wphfc-border wphfc-border-red-200 wphfc-rounded-md">
+              <p className="wphfc-text-sm wphfc-text-red-600 wphfc-m-0">
+                {error}
+              </p>
+            </div>
+          )}
+
+          <div className="wphfc-mb-4 wphfc-p-3 wphfc-bg-blue-50 wphfc-border wphfc-border-blue-200 wphfc-rounded-md">
+            <p className="wphfc-text-xs wphfc-text-gray-700 wphfc-m-0">
+              <strong>Note:</strong> Select the appropriate hook based on when
+              you want to trigger the action in the form submission process.
             </p>
           </div>
-        )}
 
-        <div className="wphfc-mb-4 wphfc-p-3 wphfc-bg-blue-50 wphfc-border wphfc-border-blue-200 wphfc-rounded-md">
-          <p className="wphfc-text-xs wphfc-text-gray-700 wphfc-m-0">
-            <strong>Note:</strong> Select the appropriate hook based on when you
-            want to trigger the action in the form submission process.
-          </p>
-        </div>
-
-        <div className="wphfc-field-mapping wphfc-mb-6 wphfc-pt-4 wphfc-border-t wphfc-border-gray-300">
-          <h3 className="wphfc-text-base wphfc-font-semibold wphfc-mb-4 wphfc-text-gray-800">
-            Happilee Field Mapping
-          </h3>
-          <div className="wphfc-space-y-3">
-            {getAvilableFields.map((field) => (
-              <div
-                key={field}
-                className="wphfc-field-map-row wphfc-flex wphfc-items-center wphfc-gap-3">
-                <label className="wphfc-text-sm wphfc-font-medium wphfc-text-gray-700 wphfc-w-32 wphfc-flex-shrink-0">
-                  {field}
-                </label>
-                <div className="wphfc-field-dropdown-container wphfc-flex-1 wphfc-relative">
-                  <button
-                    type="button"
-                    className="wphfc-select wphfc-flex wphfc-justify-between wphfc-items-center wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-bg-white wphfc-border wphfc-border-gray-300 wphfc-rounded-md wphfc-text-left wphfc-text-sm wphfc-text-gray-700 hover:wphfc-border-gray-400 focus:wphfc-outline-none focus:wphfc-ring-2 focus:wphfc-ring-blue-500 wphfc-cursor-pointer"
-                    onClick={() => toggleDropdown(field)}>
-                    <span
-                      className={
-                        fieldMappings[field]
-                          ? "wphfc-text-gray-900"
-                          : "wphfc-text-gray-500"
-                      }>
-                      {getMappedFieldLabel(field)}
-                    </span>
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                      className={`wphfc-transition-transform ${openDropdown === field ? "wphfc-rotate-180" : ""}`}>
-                      <path
-                        d="M6 9L12 15L18 9"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
-                  {openDropdown === field && (
-                    <div className="wphfc-dropdown-menu wphfc-absolute wphfc-z-10 wphfc-w-full wphfc-mt-1 wphfc-bg-white wphfc-border wphfc-border-gray-300 wphfc-rounded-md wphfc-shadow-lg wphfc-max-h-60 wphfc-overflow-y-auto">
-                      <ul className="wphfc-py-1">
-                        <li>
-                          <button
-                            type="button"
-                            className="wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-text-left wphfc-text-sm wphfc-text-gray-500 hover:wphfc-bg-gray-100 wphfc-cursor-pointer wphfc-border-none wphfc-bg-transparent"
-                            onClick={() => handleFieldMapping(field, null)}>
-                            -- None --
-                          </button>
-                        </li>
-                        {formFields.length > 0 ? (
-                          formFields.map((formField) => (
-                            <li key={formField.id || formField.name}>
-                              <button
-                                type="button"
-                                className={`wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-text-left wphfc-text-sm hover:wphfc-bg-blue-50 wphfc-cursor-pointer wphfc-border-none wphfc-bg-transparent ${
-                                  isFieldSelected(field, formField)
-                                    ? "wphfc-bg-blue-100 wphfc-text-[#0B3966] wphfc-font-medium"
-                                    : "wphfc-text-gray-700"
-                                }`}
-                                onClick={() =>
-                                  handleFieldMapping(field, formField)
-                                }>
-                                {formField.label || formField.name}
-                              </button>
-                            </li>
-                          ))
-                        ) : (
-                          <li className="wphfc-px-3 wphfc-py-2 wphfc-text-sm wphfc-text-gray-500 wphfc-italic">
-                            No fields available
+          <div className="wphfc-field-mapping wphfc-mb-6 wphfc-pt-4 wphfc-border-t wphfc-border-gray-300">
+            <h3 className="wphfc-text-base wphfc-font-semibold wphfc-mb-4 wphfc-text-gray-800">
+              Happilee Field Mapping
+            </h3>
+            <div className="wphfc-space-y-3">
+              {getAvilableFields.map((field) => (
+                <div
+                  key={field}
+                  className="wphfc-field-map-row wphfc-flex wphfc-items-center wphfc-gap-3">
+                  <label className="wphfc-text-sm wphfc-font-medium wphfc-text-gray-700 wphfc-w-32 wphfc-flex-shrink-0">
+                    {field}
+                  </label>
+                  <div
+                    className="wphfc-field-dropdown-container wphfc-flex-1 wphfc-relative"
+                    ref={(el) => (fieldDropdownRefs.current[field] = el)}>
+                    <button
+                      type="button"
+                      className="wphfc-select wphfc-flex wphfc-justify-between wphfc-items-center wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-bg-white wphfc-border wphfc-border-gray-300 wphfc-rounded-md wphfc-text-left wphfc-text-sm wphfc-text-gray-700 hover:wphfc-border-gray-400 focus:wphfc-outline-none focus:wphfc-ring-2 focus:wphfc-ring-blue-500 wphfc-cursor-pointer"
+                      onClick={() => toggleDropdown(field)}>
+                      <span
+                        className={
+                          fieldMappings[field]
+                            ? "wphfc-text-gray-900"
+                            : "wphfc-text-gray-500"
+                        }>
+                        {getMappedFieldLabel(field)}
+                      </span>
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        className={`wphfc-transition-transform ${openDropdown === field ? "wphfc-rotate-180" : ""}`}>
+                        <path
+                          d="M6 9L12 15L18 9"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                    {openDropdown === field && (
+                      <div className="wphfc-dropdown-menu wphfc-absolute wphfc-z-10 wphfc-w-full wphfc-mt-1 wphfc-bg-white wphfc-border wphfc-border-gray-300 wphfc-rounded-md wphfc-shadow-xl wphfc-max-h-60 wphfc-overflow-y-auto">
+                        <ul className="wphfc-py-1">
+                          <li>
+                            <button
+                              type="button"
+                              className="wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-text-left wphfc-text-sm wphfc-text-gray-500 hover:wphfc-bg-gray-100 wphfc-cursor-pointer wphfc-border-none wphfc-bg-transparent"
+                              onClick={() => handleFieldMapping(field, null)}>
+                              -- None --
+                            </button>
                           </li>
-                        )}
-                      </ul>
-                    </div>
-                  )}
+                          {formFields.length > 0 ? (
+                            formFields.map((formField) => (
+                              <li key={formField.id || formField.name}>
+                                <button
+                                  type="button"
+                                  className={`wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-text-left wphfc-text-sm hover:wphfc-bg-blue-50 wphfc-cursor-pointer wphfc-border-none wphfc-bg-transparent ${
+                                    isFieldSelected(field, formField)
+                                      ? "wphfc-bg-blue-100 wphfc-text-[#0B3966] wphfc-font-medium"
+                                      : "wphfc-text-gray-700"
+                                  }`}
+                                  onClick={() =>
+                                    handleFieldMapping(field, formField)
+                                  }>
+                                  {formField.label || formField.name}
+                                </button>
+                              </li>
+                            ))
+                          ) : (
+                            <li className="wphfc-px-3 wphfc-py-2 wphfc-text-sm wphfc-text-gray-500 wphfc-italic">
+                              No fields available
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          </div>
+
+          <div className="wphfc-flex wphfc-justify-end wphfc-gap-3">
+            <button
+              className="wphfc-cancel-modal wphfc-px-4 wphfc-py-2 wphfc-text-sm wphfc-font-medium wphfc-bg-red-600 wphfc-text-white wphfc-border-none wphfc-rounded-md wphfc-cursor-pointer hover:wphfc-bg-red-700 disabled:wphfc-opacity-50 disabled:wphfc-cursor-not-allowed wphfc-transition-colors"
+              onClick={() => handleClose(false)}
+              disabled={isSaving}>
+              Cancel
+            </button>
+            <button
+              className="wphfc-save-modal wphfc-px-4 wphfc-py-2 wphfc-text-sm wphfc-font-medium wphfc-bg-green-600 wphfc-text-white wphfc-border-none wphfc-rounded-md wphfc-cursor-pointer hover:wphfc-bg-green-700 disabled:wphfc-opacity-50 disabled:wphfc-cursor-not-allowed wphfc-transition-colors"
+              onClick={saveFormSettings}
+              disabled={isSaving || !selectedHook}>
+              {isSaving ? "Saving..." : "Save Settings"}
+            </button>
           </div>
         </div>
-
-        <div className="wphfc-flex wphfc-justify-end wphfc-gap-3">
-          <button
-            className="wphfc-cancel-modal wphfc-px-4 wphfc-py-2 wphfc-text-sm wphfc-font-medium wphfc-bg-red-600 wphfc-text-white wphfc-border-none wphfc-rounded-md wphfc-cursor-pointer hover:wphfc-bg-red-700 disabled:wphfc-opacity-50 disabled:wphfc-cursor-not-allowed wphfc-transition-colors"
-            onClick={() => onClose(false)}
-            disabled={isSaving}>
-            Cancel
-          </button>
-          <button
-            className="wphfc-save-modal wphfc-px-4 wphfc-py-2 wphfc-text-sm wphfc-font-medium wphfc-bg-green-600 wphfc-text-white wphfc-border-none wphfc-rounded-md wphfc-cursor-pointer hover:wphfc-bg-green-700 disabled:wphfc-opacity-50 disabled:wphfc-cursor-not-allowed wphfc-transition-colors"
-            onClick={saveFormSettings}
-            disabled={isSaving || !selectedHook}>
-            {isSaving ? "Saving..." : "Save Settings"}
-          </button>
-        </div>
       </div>
-    </div>
+    </>
   );
 };
 

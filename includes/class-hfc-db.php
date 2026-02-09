@@ -73,5 +73,4 @@ if ( ! class_exists( 'happilee_HFC_DB' ) ) {
 		}
 
 	}
-
 }

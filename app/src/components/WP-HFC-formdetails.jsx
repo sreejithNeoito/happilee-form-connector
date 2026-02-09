@@ -80,10 +80,10 @@ const WPHFC_FormDetails = ({ activeForm }) => {
           activeHook = "wpforms_process_complete";
           break;
         case "ninja_forms":
-          activeHook = "ninja_forms_process_complete";
+          activeHook = "ninja_forms_after_submission";
           break;
         case "forminator":
-          activeHook = "forminator_form_after_handle_submit";
+          activeHook = "forminator_form_after_save_entry";
           break;
         default:
           console.warn("Unknown form type:", formType);

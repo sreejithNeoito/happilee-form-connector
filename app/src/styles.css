@@ -25,6 +25,17 @@ h6 {
 #api-key {
   line-height: 2;
 }
+/* Prevent body scroll when modal is open */
+body.wphfc-modal-open {
+  overflow: hidden !important;
+}
+
+/* Disable clicks on admin menu and admin bar */
+body.wphfc-modal-open #adminmenumain,
+body.wphfc-modal-open #wpadminbar {
+  pointer-events: none !important;
+  user-select: none !important;
+}
 .wphfc-tab-link {
   display: inline-block;
   padding: 0.5rem 1rem;
