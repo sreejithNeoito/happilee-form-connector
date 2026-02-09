@@ -30,10 +30,6 @@ if (!class_exists('Happilee_HFC_Api')) {
 
 			add_action('rest_api_init', array($this, 'register_routes'));
 		}
-
-		/**
-		 * Get encryption key
-		 */
 		private function get_encryption_key()
 		{
 			$stored_key = get_option('wphfc_encryption_key_hash');
@@ -243,7 +239,7 @@ if (!class_exists('Happilee_HFC_Api')) {
 			if (empty($api_key)) {
 				return new WP_REST_Response(array(
 					'success' => false,
-					'message' => __('API Key is required', 'happilee-forms-connect')
+					'message' => __('API Key is required', 'happilee-forms-connector')
 				), 400);
 			}
 
@@ -252,7 +248,7 @@ if (!class_exists('Happilee_HFC_Api')) {
 			if (get_transient($transient_key)) {
 				return new WP_REST_Response(array(
 					'success' => false,
-					'message' => __('Please wait before verifying again', 'happilee-forms-connect')
+					'message' => __('Please wait before verifying again', 'happilee-forms-connector')
 				), 429);
 			}
 
@@ -262,7 +258,7 @@ if (!class_exists('Happilee_HFC_Api')) {
 				'headers' => [
 					'Authorization' => 'Bearer ' . $api_key,
 					'Content-Type' => 'application/json',
-					'User-Agent' => 'Happilee-Forms-Connect/' . HAPPILEE_FORMS_VERSION . '; ' . get_bloginfo('url'),
+					'User-Agent' => 'Happilee-Forms-Connector/' . HAPPILEE_FORMS_VERSION . '; ' . get_bloginfo('url'),
 				],
 				'timeout' => 15,
 				'redirection' => 0,
@@ -276,7 +272,7 @@ if (!class_exists('Happilee_HFC_Api')) {
 				return new WP_REST_Response(array(
 					'success' => false,
 					'message' => sprintf(
-						__('API request error: %s', 'happilee-forms-connect'),
+						__('API request error: %s', 'happilee-forms-connector'),
 						esc_html($response->get_error_message())
 					)
 				), 500);
@@ -286,7 +282,7 @@ if (!class_exists('Happilee_HFC_Api')) {
 			if (200 !== $code) {
 				return new WP_REST_Response(array(
 					'success' => false,
-					'message' => __('Invalid API key', 'happilee-forms-connect')
+					'message' => __('Invalid API key', 'happilee-forms-connector')
 				), 401);
 			}
 
@@ -295,7 +291,7 @@ if (!class_exists('Happilee_HFC_Api')) {
 			if (empty($encrypted_key)) {
 				return new WP_REST_Response(array(
 					'success' => false,
-					'message' => __('Failed to encrypt API key', 'happilee-forms-connect')
+					'message' => __('Failed to encrypt API key', 'happilee-forms-connector')
 				), 500);
 			}
 
@@ -303,7 +299,7 @@ if (!class_exists('Happilee_HFC_Api')) {
 
 			return new WP_REST_Response(array(
 				'success' => true,
-				'message' => __('Settings saved successfully', 'happilee-forms-connect')
+				'message' => __('Settings saved successfully', 'happilee-forms-connector')
 			), 200);
 
 		}
@@ -421,7 +417,7 @@ if (!class_exists('Happilee_HFC_Api')) {
 
 			if (empty($form_plugins)) {
 				return new WP_REST_Response(
-					['message' => __('No supported form plugins found', 'happilee-forms-connect')],
+					['message' => __('No supported form plugins found', 'happilee-forms-connector')],
 					404
 				);
 			}
@@ -429,7 +425,7 @@ if (!class_exists('Happilee_HFC_Api')) {
 			return new WP_REST_Response(
 				[
 					'plugins' => $form_plugins,
-					'message' => __('Forms fetched successfully', 'happilee-forms-connect')
+					'message' => __('Forms fetched successfully', 'happilee-forms-connector')
 				],
 				200
 			);
@@ -443,7 +439,7 @@ if (!class_exists('Happilee_HFC_Api')) {
 			if (empty($form_id) || empty($form_type)) {
 				return new WP_REST_Response(array(
 					'success' => false,
-					'message' => __('Form ID and Form Type are required', 'happilee-forms-connect')
+					'message' => __('Form ID and Form Type are required', 'happilee-forms-connector')
 				), 400);
 			}
 
@@ -454,7 +450,7 @@ if (!class_exists('Happilee_HFC_Api')) {
 				if (!$contact_form) {
 					return new WP_REST_Response(array(
 						'success' => false,
-						'message' => __('Form not found', 'happilee-forms-connect')
+						'message' => __('Form not found', 'happilee-forms-connector')
 					), 404);
 				}
 
@@ -475,7 +471,7 @@ if (!class_exists('Happilee_HFC_Api')) {
 				return new WP_REST_Response(array(
 					'success' => true,
 					'fields' => $fields,
-					'message' => __('Form fields fetched successfully', 'happilee-forms-connect')
+					'message' => __('Form fields fetched successfully', 'happilee-forms-connector')
 				), 200);
 			}
 
@@ -488,7 +484,7 @@ if (!class_exists('Happilee_HFC_Api')) {
 				if (!$wpform) {
 					return new WP_REST_Response(array(
 						'success' => false,
-						'message' => __('Form not found', 'happilee-forms-connect')
+						'message' => __('Form not found', 'happilee-forms-connector')
 					), 404);
 				}
 
@@ -497,7 +493,7 @@ if (!class_exists('Happilee_HFC_Api')) {
 				if (empty($form_data['fields'])) {
 					return new WP_REST_Response(array(
 						'success' => false,
-						'message' => __('No fields found in this form', 'happilee-forms-connect')
+						'message' => __('No fields found in this form', 'happilee-forms-connector')
 					), 404);
 				}
 
@@ -521,7 +517,7 @@ if (!class_exists('Happilee_HFC_Api')) {
 				return new WP_REST_Response(array(
 					'success' => true,
 					'fields' => $fields,
-					'message' => __('Form fields fetched successfully', 'happilee-forms-connect')
+					'message' => __('Form fields fetched successfully', 'happilee-forms-connector')
 				), 200);
 			}
 
@@ -534,7 +530,7 @@ if (!class_exists('Happilee_HFC_Api')) {
 				if (!$forminator) {
 					return new WP_REST_Response(array(
 						'success' => false,
-						'message' => __('Form not found', 'happilee-forms-connect')
+						'message' => __('Form not found', 'happilee-forms-connector')
 					), 404);
 				}
 
@@ -543,7 +539,7 @@ if (!class_exists('Happilee_HFC_Api')) {
 				if (empty($form_fields)) {
 					return new WP_REST_Response(array(
 						'success' => false,
-						'message' => __('No fields found in this form', 'happilee-forms-connect')
+						'message' => __('No fields found in this form', 'happilee-forms-connector')
 					), 404);
 				}
 
@@ -585,7 +581,7 @@ if (!class_exists('Happilee_HFC_Api')) {
 				return new WP_REST_Response(array(
 					'success' => true,
 					'fields' => $fields,
-					'message' => __('Form fields fetched successfully', 'happilee-forms-connect')
+					'message' => __('Form fields fetched successfully', 'happilee-forms-connector')
 				), 200);
 			}
 
@@ -598,7 +594,7 @@ if (!class_exists('Happilee_HFC_Api')) {
 				if (!$ninja_form) {
 					return new WP_REST_Response(array(
 						'success' => false,
-						'message' => __('Form not found', 'happilee-forms-connect')
+						'message' => __('Form not found', 'happilee-forms-connector')
 					), 404);
 				}
 
@@ -651,20 +647,20 @@ if (!class_exists('Happilee_HFC_Api')) {
 				if (empty($fields)) {
 					return new WP_REST_Response(array(
 						'success' => false,
-						'message' => __('No usable fields found in this form', 'happilee-forms-connect')
+						'message' => __('No usable fields found in this form', 'happilee-forms-connector')
 					), 404);
 				}
 
 				return new WP_REST_Response(array(
 					'success' => true,
 					'fields' => $fields,
-					'message' => __('Form fields fetched successfully', 'happilee-forms-connect')
+					'message' => __('Form fields fetched successfully', 'happilee-forms-connector')
 				), 200);
 			}
 
 			return new WP_REST_Response(array(
 				'success' => false,
-				'message' => __('Unsupported form type', 'happilee-forms-connect')
+				'message' => __('Unsupported form type', 'happilee-forms-connector')
 			), 400);
 		}
 
@@ -682,7 +678,7 @@ if (!class_exists('Happilee_HFC_Api')) {
 			if (empty($form_id) || empty($form_type)) {
 				return new WP_REST_Response(array(
 					'success' => false,
-					'message' => __('Form ID and Form Type are required', 'happilee-forms-connect')
+					'message' => __('Form ID and Form Type are required', 'happilee-forms-connector')
 				), 400);
 			}
 
@@ -735,13 +731,13 @@ if (!class_exists('Happilee_HFC_Api')) {
 				if ($updated === false) {
 					return new WP_REST_Response(array(
 						'success' => false,
-						'message' => __('Failed to update form settings', 'happilee-forms-connect')
+						'message' => __('Failed to update form settings', 'happilee-forms-connector')
 					), 500);
 				}
 
 				return new WP_REST_Response(array(
 					'success' => true,
-					'message' => __('Form settings updated successfully', 'happilee-forms-connect'),
+					'message' => __('Form settings updated successfully', 'happilee-forms-connector'),
 					'action' => 'updated'
 				), 200);
 
@@ -768,13 +764,13 @@ if (!class_exists('Happilee_HFC_Api')) {
 				if ($inserted === false) {
 					return new WP_REST_Response(array(
 						'success' => false,
-						'message' => __('Failed to insert form settings', 'happilee-forms-connect')
+						'message' => __('Failed to insert form settings', 'happilee-forms-connector')
 					), 500);
 				}
 
 				return new WP_REST_Response(array(
 					'success' => true,
-					'message' => __('Form settings saved successfully', 'happilee-forms-connect'),
+					'message' => __('Form settings saved successfully', 'happilee-forms-connector'),
 					'action' => 'inserted'
 				), 200);
 			}
@@ -792,14 +788,14 @@ if (!class_exists('Happilee_HFC_Api')) {
 			if ($wpdb->last_error) {
 				return new WP_REST_Response(array(
 					'success' => false,
-					'message' => __('Failed to fetch form data', 'happilee-forms-connect')
+					'message' => __('Failed to fetch form data', 'happilee-forms-connector')
 				), 500);
 			}
 
 			return new WP_REST_Response(array(
 				'success' => true,
 				'form_data' => $form_data,
-				'message' => __('Form data fetched successfully', 'happilee-forms-connect')
+				'message' => __('Form data fetched successfully', 'happilee-forms-connector')
 			), 200);
 		}
 	}
