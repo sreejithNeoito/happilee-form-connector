@@ -25,21 +25,27 @@ if (!class_exists('Happilee_Forms_Connect')) {
 			add_action('plugins_loaded', array($this, 'load_api_class'), 20);
 			add_action('plugins_loaded', array($this, 'init_operation_class'), 20);
 
-			// Load textdomain for backward compatibility (WordPress < 4.6)
-			add_action('plugins_loaded', array($this, 'happilee_forms_connect_load_textdomain'));
+			// Add settings link
+			add_filter('plugin_action_links_' . plugin_basename(HAPPILEE_FORMS_PLUGIN_FILE), array($this, 'add_plugin_action_links'));
 		}
 
 		/**
-		 * Load plugin textdomain
-		 * For WordPress < 4.6 compatibility
+		 * Add settings link to plugin actions
+		 *
+		 * @param array $links Existing plugin action links
+		 * @return array Modified plugin action links
 		 */
-		public function happilee_forms_connect_load_textdomain()
+
+		public function add_plugin_action_links($links)
 		{
-			load_plugin_textdomain(
-				'happilee-forms-connector',
-				false,
-				dirname(plugin_basename(HAPPILEE_FORMS_PLUGIN_FILE)) . '/languages'
+			$settings_link = sprintf(
+				'<a href="%s">%s</a>',
+				admin_url('options-general.php?page=happilee-forms-connector'),
+				__('Settings', 'happilee-forms-connector')
 			);
+			array_unshift($links, $settings_link);
+
+			return $links;
 		}
 
 		public function load_api_class()
@@ -109,6 +115,27 @@ if (!class_exists('Happilee_Forms_Connect')) {
 				));
 			}
 		}
+
+		/**
+		 * Custom logging function that respects WordPress debug settings
+		 */
+		public static function log_message($message, $level = 'info')
+		{
+			if (defined('WP_DEBUG') && WP_DEBUG === true) {
+				if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG === true) {
+					$formatted_message = sprintf(
+						'Happilee Forms Connect [%s]: %s',
+						strtoupper($level),
+						$message
+					);
+
+					// @codingStandardsIgnoreLine
+					error_log($formatted_message);
+				}
+			}
+			do_action('wphfc_log_message', $message, $level);
+		}
+
 
 		public function hfc_settings_page()
 		{

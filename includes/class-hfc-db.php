@@ -23,7 +23,14 @@ if ( ! class_exists( 'happilee_HFC_DB' ) ) {
 		 */
 		private function is_table_exists() {
 			global $wpdb;
-			$table = $wpdb->get_var( "SHOW TABLES LIKE '{$this->table_name}'" );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$table = $wpdb->get_var(
+				$wpdb->prepare(
+					'SHOW TABLES LIKE %s',
+					$this->table_name
+				)
+			);
+
 			return ( $table === $this->table_name );
 		}
 
@@ -68,6 +75,7 @@ if ( ! class_exists( 'happilee_HFC_DB' ) ) {
 		 */
 		public function hfc_delete_dataTable() {
 			global $wpdb;
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$wpdb->query( "DROP TABLE IF EXISTS {$this->table_name}" );
 			delete_option( 'hfc_db_version' );
 		}

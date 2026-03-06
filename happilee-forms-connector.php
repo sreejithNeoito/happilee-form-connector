@@ -4,8 +4,8 @@
  * Plugin URI: https://happilee.io
  * Description: Connect your WordPress forms to Happilee API seamlessly
  * Version: 1.0.0
- * Author: Happilee
- * Author URI: https://happilee.io
+ * Author: Neoito
+ * Author URI: https://neoito.com
  * License: GPL v2 or later
  * Text Domain: happilee-forms-connector
  */
