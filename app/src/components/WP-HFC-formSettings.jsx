@@ -52,13 +52,13 @@ const WPHFC_ApiConfiguration = () => {
           <p className="wphfc-text-[14px] wphfc-text-gray-600 wphfc-mt-2">
             Here is a list of all WordPress forms that can be connected through
             our plugin. Each form uses native form hooks to capture submissions
-            and forward the data to your configured API endpoint.
+            and forward the data to happilee platform.
           </p>
         </div>
       </div>
 
-      <div className="wphfc-w-full wphfc-flex wphfc-gap-5 wphfc-pt-5">
-        <div className="wphfc-w-[20%] whfc-form-selector wphfc-bg-white wphfc-rounded-lg wphfc-shadow-md wphfc-overflow-hidden">
+      <div className="wphfc-w-full md:wphfc-flex wphfc-gap-5 wphfc-pt-5">
+        <div className="md:wphfc-w-[20%] wphfc-w-full whfc-form-selector wphfc-bg-white wphfc-rounded-lg wphfc-shadow-md wphfc-overflow-hidden md:wphfc-mb-0 wphfc-mb-5">
           {loading ? (
             <div className="wphfc-p-4 wphfc-text-center wphfc-text-gray-500">
               <p>Loading forms...</p>
@@ -95,7 +95,7 @@ const WPHFC_ApiConfiguration = () => {
           )}
         </div>
 
-        <div className="wphfc-w-[80%] wphfc-bg-white wphfc-rounded-lg wphfc-shadow-md">
+        <div className="md:wphfc-w-[80%] wphfc-w-full wphfc-bg-white wphfc-rounded-lg wphfc-shadow-md">
           <FomDetails activeForm={activeForm} />
         </div>
       </div>

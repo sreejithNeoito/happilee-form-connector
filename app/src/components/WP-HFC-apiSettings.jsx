@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 
 const WPHFC_ApiConfiguration = () => {
-  const [apiEndpoint, setApiEndpoint] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [message, setMessage] = useState("");
@@ -23,12 +22,11 @@ const WPHFC_ApiConfiguration = () => {
             "X-WP-Nonce": happileeConnect.wphfc_nonce,
           },
           credentials: "same-origin",
-        }
+        },
       );
 
       if (response.ok) {
         const data = await response.json();
-        setApiEndpoint(data.apiEndpoint || "");
         setApiKey(data.apiKey || "");
       }
     } catch (error) {
@@ -38,7 +36,7 @@ const WPHFC_ApiConfiguration = () => {
 
   // Save settings
   const saveSettings = () => {
-    if (!apiEndpoint.trim() || !apiKey.trim()) {
+    if (!apiKey.trim()) {
       setMessage("⚠️ Please fill in all fields");
       return;
     }
@@ -53,7 +51,7 @@ const WPHFC_ApiConfiguration = () => {
         "X-WP-Nonce": happileeConnect.wphfc_nonce,
       },
       body: JSON.stringify({
-        apiEndpoint,
+        // apiEndpoint,
         apiKey,
       }),
       credentials: "same-origin",
@@ -87,33 +85,12 @@ const WPHFC_ApiConfiguration = () => {
               message.includes("⚠️")
                 ? "wphfc-bg-red-50 wphfc-text-red-700 wphfc-border wphfc-border-red-200 "
                 : message.includes("✅")
-                ? "wphfc-bg-green-50 wphfc-text-green-700 wphfc-border wphfc-border-green-200"
-                : "wphfc-bg-blue-50 wphfc-text-blue-700 wphfc-border wphfc-border-blue-200"
+                  ? "wphfc-bg-green-50 wphfc-text-green-700 wphfc-border wphfc-border-green-200"
+                  : "wphfc-bg-blue-50 wphfc-text-blue-700 wphfc-border wphfc-border-blue-200"
             }`}>
             {message}
           </div>
         )}
-
-        {/* API Endpoint Field */}
-        <div className="wphfc-mb-6">
-          <label
-            htmlFor="api-endpoint"
-            className="wphfc-block wphfc-font-archivo wphfc-text-sm wphfc-font-semibold wphfc-text-gray-700 wphfc-mb-2">
-            API Endpoint URL
-          </label>
-          <input
-            id="api-endpoint"
-            type="text"
-            value={apiEndpoint}
-            onChange={(e) => setApiEndpoint(e.target.value)}
-            placeholder="https://api.example.com/v1"
-            disabled={isLoading}
-            className="wphfc-w-full wphfc-px-4 wphfc-border wphfc-py-2.5 wphfc-border-gray-300 wphfc-rounded-lg focus:wphfc-ring-2 focus:wphfc-ring-blue-500 focus:wphfc-outline-none disabled:wphfc-bg-gray-100 disabled:wphfc-cursor-not-allowed"
-          />
-          <p className="wphfc-mt-2 wphfc-text-[13px] wphfc-text-gray-500 wphfc-font-roboto">
-            Enter the full URL of your API endpoint
-          </p>
-        </div>
 
         {/* API Key Field */}
         <div className="wphfc-mb-6">
@@ -130,6 +107,7 @@ const WPHFC_ApiConfiguration = () => {
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="Enter your API key"
               disabled={isLoading}
+              autoComplete="new-password"
               className="wphfc-w-full wphfc-px-4 wphfc-border wphfc-py-2.5 wphfc-border-gray-300 wphfc-rounded-lg focus:wphfc-ring-2 focus:wphfc-ring-blue-500 focus:wphfc-outline-none wphfc-pr-12 disabled:wphfc-bg-gray-100 disabled:wphfc-cursor-not-allowed"
             />
             <button
