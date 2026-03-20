@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+
 const WPHFC_HookModal = ({
   selectedFormId,
   formType,
@@ -18,9 +19,29 @@ const WPHFC_HookModal = ({
   const [openDropdown, setOpenDropdown] = useState(null);
   const [isHookDropdownOpen, setIsHookDropdownOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [autoCountryCode, setAutoCountryCode] = useState("");
+  const [isFetchingCountryCode, setIsFetchingCountryCode] = useState(false);
 
   const hookDropdownRef = useRef(null);
   const fieldDropdownRefs = useRef({});
+
+  // ─── Label ↔ Storage-key maps ────────────────────────────────────────────
+  // UI always shows the human-readable label ("First Name").
+  // Data is saved / loaded using the snake_case key ("first_name").
+  const fieldLabelToKey = {
+    "First Name": "first_name",
+    "Last Name": "last_name",
+    Mobile: "phone_number",
+    "Country Code": "country_code",
+    Birthday: "birthday",
+    Tags: "tags",
+  };
+
+  // Reverse map – used when rehydrating saved DB data back into UI state
+  const fieldKeyToLabel = Object.fromEntries(
+    Object.entries(fieldLabelToKey).map(([label, key]) => [key, label]),
+  );
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Toast Notification
   const notify = (message, type = "success") => {
@@ -34,7 +55,7 @@ const WPHFC_HookModal = ({
     });
   };
 
-  //Close drpdowns when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
@@ -59,24 +80,32 @@ const WPHFC_HookModal = ({
     getFormFields(selectedFormId, formType);
   }, [selectedFormId, formType]);
 
-  // Initialize field mappings from database when modal opens
+  // Initialize field mappings from database when modal opens.
+  // DB stores keys as snake_case ("first_name") → convert back to display
+  // labels ("First Name") so the UI state is always label-keyed.
   useEffect(() => {
     const formKey = String(selectedFormId);
     const savedFields = CurrentFields[formKey];
     if (savedFields) {
       try {
-        // Parse the JSON string from database
         const parsedFields =
           typeof savedFields === "string"
             ? JSON.parse(savedFields)
             : savedFields;
 
-        // Set the field mappings
         if (parsedFields && typeof parsedFields === "object") {
-          setFieldMappings(parsedFields);
+          const labelKeyedMappings = {};
+          Object.entries(parsedFields).forEach(
+            ([storedKey, formFieldValue]) => {
+              // Convert snake_case key → display label, fall back to raw key
+              const displayLabel = fieldKeyToLabel[storedKey] || storedKey;
+              labelKeyedMappings[displayLabel] = formFieldValue;
+            },
+          );
+          setFieldMappings(labelKeyedMappings);
         }
-      } catch (error) {
-        console.error("Error parsing saved fields:", error);
+      } catch (err) {
+        console.error("Error parsing saved fields:", err);
       }
     }
   }, [CurrentFields, selectedFormId]);
@@ -117,6 +146,7 @@ const WPHFC_HookModal = ({
     return hooks[formType] || [];
   };
 
+  // Human-readable labels shown in the UI (unchanged)
   const getAvilableFields = [
     "First Name",
     "Last Name",
@@ -185,6 +215,7 @@ const WPHFC_HookModal = ({
     return hook ? hook.label : "Please Select the Hook";
   };
 
+  // fieldMappings state is always keyed by display label ("First Name" → "form-field-name")
   const handleFieldMapping = (happileeField, formField) => {
     let fieldValue = null;
     if (formField) {
@@ -213,11 +244,21 @@ const WPHFC_HookModal = ({
     setOpenDropdown(null);
   };
 
-  // Helper function to get the display label for a mapped field
+  // Helper: display label for the currently mapped form field
   const getMappedFieldLabel = (happileeField) => {
     const mappedValue = fieldMappings[happileeField];
+
+    if (
+      happileeField === "Country Code" &&
+      (!mappedValue || mappedValue === "country-code")
+    ) {
+      if (isFetchingCountryCode) return "Detecting...";
+      if (autoCountryCode) return `Auto: ${autoCountryCode}`;
+      return "Country Code";
+    }
+
     if (!mappedValue) return happileeField;
-    // Find the form field that matches this mapping
+
     const formField = formFields.find((f) => {
       switch (formType) {
         case "wpforms":
@@ -236,10 +277,10 @@ const WPHFC_HookModal = ({
     return formField ? formField.label || formField.name : mappedValue;
   };
 
-  // Helper function to check if a field is selected
+  // Helper: highlight the currently selected option in the dropdown
   const isFieldSelected = (happileeField, formField) => {
     const mappedValue = fieldMappings[happileeField];
-    if (!mappedValue) return false;
+    if (!mappedValue || mappedValue === "country-code") return false;
 
     switch (formType) {
       case "wpforms":
@@ -255,14 +296,59 @@ const WPHFC_HookModal = ({
     }
   };
 
+  // Fetch country code from IP if Country Code field is not mapped
+
+  useEffect(() => {
+    fetchCountryCodeFromIP();
+  }, []);
+
+  const fetchCountryCodeFromIP = async () => {
+    setIsFetchingCountryCode(true);
+    try {
+      const response = await fetch("https://ipapi.co/json/");
+      const data = await response.json();
+      if (data && data.country_calling_code) {
+        setAutoCountryCode(data.country_calling_code); // e.g. "+91"
+      }
+    } catch (error) {
+      console.error("Failed to fetch country code from IP:", error);
+      setAutoCountryCode("+1");
+    } finally {
+      setIsFetchingCountryCode(false);
+    }
+  };
+
   const saveFormSettings = async () => {
     if (!selectedHook) {
       setError("Please select a hook");
       return;
     }
 
+    if (!fieldMappings["Mobile"]) {
+      notify(
+        "Phone field is required. Settings cannot be saved without mapping the Mobile field.",
+        "error",
+      );
+      return;
+    }
+
     setIsSaving(true);
     setError("");
+
+    // Convert display-label keys → snake_case keys before sending to the API.
+    // e.g. { "First Name": "your-cf7-field" } → { "first_name": "your-cf7-field" }
+    const keyedFieldMappings = {};
+    Object.entries(fieldMappings).forEach(([displayLabel, formFieldValue]) => {
+      if (formFieldValue !== null && formFieldValue !== undefined) {
+        const storageKey = fieldLabelToKey[displayLabel] || displayLabel;
+        keyedFieldMappings[storageKey] = formFieldValue;
+      }
+    });
+
+    // Set country code if the mapping country code section is empty
+    if (!keyedFieldMappings["country_code"]) {
+      keyedFieldMappings["country_code"] = "country-code";
+    }
 
     try {
       const response = await fetch(
@@ -279,7 +365,7 @@ const WPHFC_HookModal = ({
             form_type: formType,
             active_hook: selectedHook,
             is_enabled: 1,
-            form_field: fieldMappings,
+            form_field: keyedFieldMappings, // ← snake_case keys
           }),
           credentials: "same-origin",
         },
@@ -368,7 +454,7 @@ const WPHFC_HookModal = ({
               Form Name: <strong>{formName}</strong>
             </label>
 
-            {/* --------------------------- Hook Selection Dropdown ------------------------ */}
+            {/* Hook Selection Dropdown */}
             <button
               type="button"
               className="wphfc-w-full wphfc-items-center wphfc-bg-white wphfc-flex wphfc-justify-between wphfc-modal-select wphfc-p-2 wphfc-select wphfc-rounded-md"
@@ -414,7 +500,6 @@ const WPHFC_HookModal = ({
                 ))}
               </ul>
             )}
-            {/* --------------------------- Hook Selection Dropdown ------------------------ */}
           </div>
 
           {error && (
@@ -441,6 +526,7 @@ const WPHFC_HookModal = ({
                 <div
                   key={field}
                   className="wphfc-field-map-row wphfc-flex wphfc-items-center wphfc-gap-3">
+                  {/* Display label is always human-readable */}
                   <label className="wphfc-text-sm wphfc-font-medium wphfc-text-gray-700 wphfc-w-32 wphfc-flex-shrink-0">
                     {field}
                   </label>

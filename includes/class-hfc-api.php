@@ -11,7 +11,12 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 		private static $instance = null;
 		private $table_name;
 		private $encryption_key;
-		const API_ENDPOINT = 'https://devapi.happilee.io/api/v1/createContact';
+
+		// Endpoint used to validate the API key and fetch project details
+		const API_ENDPOINT_VALIDATE = 'https://devapi.happilee.io/api/v1/getProjectDetails';
+
+		// Endpoint used to send form submission data
+		const API_ENDPOINT_CREATE_CONTACT = 'https://devapi.happilee.io/api/v1/createContact';
 
 		public static function get_instance() {
 			if ( self::$instance === null ) {
@@ -27,6 +32,7 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 
 			add_action( 'rest_api_init', array( $this, 'register_routes' ) );
 		}
+
 		private function get_encryption_key() {
 			$stored_key = get_option( 'wphfc_encryption_key_hash' );
 
@@ -155,10 +161,17 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 		}
 
 		/**
-		 * Get API endpoint
+		 * Get the API endpoint used for validating the key / fetching project details
 		 */
-		public function get_api_endpoint() {
-			return apply_filters( 'wphfc_api_endpoint', self::API_ENDPOINT );
+		public function get_validate_endpoint() {
+			return apply_filters( 'wphfc_api_validate_endpoint', self::API_ENDPOINT_VALIDATE );
+		}
+
+		/**
+		 * Get the API endpoint used for sending form submission data (createContact)
+		 */
+		public function get_create_contact_endpoint() {
+			return apply_filters( 'wphfc_api_create_contact_endpoint', self::API_ENDPOINT_CREATE_CONTACT );
 		}
 
 		/**
@@ -218,6 +231,7 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 
 		/**
 		 * Save API Settings
+		 * Validates the provided API key against the getProjectDetails endpoint.
 		 */
 		public function wphfc_save_api_settings( WP_REST_Request $request ) {
 
@@ -239,19 +253,20 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 				), 429 );
 			}
 
-			$api_endpoint = $this->get_api_endpoint();
+			// Validate the API key by fetching project details
+			$validate_endpoint = $this->get_validate_endpoint();
 
-			$response = wp_remote_get( $api_endpoint . '/auth/check', [
-				'headers'     => [
-					'Authorization' => 'Bearer ' . $api_key,
-					'Content-Type'  => 'application/json',
-					'User-Agent'    => 'Happilee-Forms-Connector/' . HAPPILEE_FORMS_VERSION . '; ' . get_bloginfo( 'url' ),
-				],
+			$response = wp_remote_get( $validate_endpoint, array(
+				'headers'     => array(
+					'x-api-key'    => $api_key,
+					'Content-Type' => 'application/json',
+					'User-Agent'   => 'Happilee-Forms-Connector/' . HAPPILEE_FORMS_VERSION . '; ' . get_bloginfo( 'url' ),
+				),
 				'timeout'     => 15,
 				'redirection' => 0,
 				'sslverify'   => true,
 				'httpversion' => '1.1',
-			] );
+			) );
 
 			set_transient( $transient_key, true, 10 );
 
@@ -298,9 +313,10 @@ if ( ! class_exists( 'Happilee_HFC_Api' ) ) {
 			$decrypted_key = $this->get_api_key();
 			return new WP_REST_Response(
 				array(
-					'success'     => true,
-					'apiEndpoint' => $this->get_api_endpoint(),
-					'apiKey'      => $decrypted_key,
+					'success'                  => true,
+					'apiValidateEndpoint'      => $this->get_validate_endpoint(),
+					'apiCreateContactEndpoint' => $this->get_create_contact_endpoint(),
+					'apiKey'                   => $decrypted_key,
 				),
 				200
 			);

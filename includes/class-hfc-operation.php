@@ -167,6 +167,102 @@ if ( ! class_exists( 'Happilee_HFC_Operation' ) ) {
 			return $config;
 		}
 
+		/**
+		 * Resolve country code from visitor IP
+		 */
+		private function resolve_country_code_from_ip() {
+			$visitor_ip = '';
+
+			// Handle proxies / load balancers
+			if ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
+				$ips        = explode( ',', $_SERVER['HTTP_X_FORWARDED_FOR'] );
+				$visitor_ip = trim( $ips[0] );
+			} elseif ( ! empty( $_SERVER['REMOTE_ADDR'] ) ) {
+				$visitor_ip = $_SERVER['REMOTE_ADDR'];
+			}
+
+			// Fallback for localhost / dev environment
+			if ( empty( $visitor_ip ) || in_array( $visitor_ip, array( '127.0.0.1', '::1' ), true ) ) {
+				return '+1';
+			}
+
+			$response = wp_remote_get(
+				"https://ipapi.co/{$visitor_ip}/country_calling_code/",
+				array( 'timeout' => 5 )
+			);
+
+			if ( ! is_wp_error( $response ) && 200 === wp_remote_retrieve_response_code( $response ) ) {
+				$code = trim( wp_remote_retrieve_body( $response ) );
+				if ( ! empty( $code ) && str_starts_with( $code, '+' ) ) {
+					return sanitize_text_field( $code );
+				}
+			}
+
+			Happilee_Forms_Connect::log_message( 'Failed to detect country code from IP: ' . $visitor_ip, 'warning' );
+			return '+1'; // last resort fallback
+		}
+
+		/*
+		 * Handle API Communication
+		 *
+		 * Sends form submission data to the createContact endpoint
+		 * using the x-api-key header (decrypted from stored settings).
+		 */
+		private function wphfc_send_to_api( $api_data ) {
+
+			$api_instance = Happilee_HFC_Api::get_instance();
+
+			// Use the dedicated createContact endpoint
+			$api_endpoint = $api_instance->get_create_contact_endpoint();
+
+			// Retrieve and decrypt the stored API key
+			$api_key = $api_instance->get_api_key();
+
+			if ( empty( $api_endpoint ) ) {
+				Happilee_Forms_Connect::log_message( 'API endpoint is not configured', 'error' );
+				return false;
+			}
+
+			if ( empty( $api_key ) ) {
+				Happilee_Forms_Connect::log_message( 'API key is not configured', 'error' );
+				return false;
+			}
+
+			// if missing or set to "country-code", detect from visitor IP
+			if ( empty( $api_data['country_code'] ) || $api_data['country_code'] === 'country-code' ) {
+				$api_data['country_code'] = $this->resolve_country_code_from_ip();
+				Happilee_Forms_Connect::log_message( 'Auto-detected country code: ' . $api_data['country_code'], 'info' );
+			}
+
+			$response = wp_remote_post( $api_endpoint, array(
+				'headers' => array(
+					'x-api-key'    => $api_key,
+					'Content-Type' => 'application/json',
+				),
+				'body'    => wp_json_encode( $api_data ),
+				'timeout' => 30,
+			) );
+
+			// Handle response
+			if ( is_wp_error( $response ) ) {
+				Happilee_Forms_Connect::log_message( 'API request error: ' . $response->get_error_message(), 'error' );
+				return false;
+			}
+
+			$response_code = wp_remote_retrieve_response_code( $response );
+			$response_body = wp_remote_retrieve_body( $response );
+
+			if ( $response_code !== 200 ) {
+				Happilee_Forms_Connect::log_message(
+					sprintf( 'API error - Status %d: %s', $response_code, $response_body ),
+					'error'
+				);
+				return false;
+			}
+
+			return true;
+		}
+
 		/*
 		 * Handle Contact Form 7 Submission
 		 */
@@ -198,9 +294,8 @@ if ( ! class_exists( 'Happilee_HFC_Operation' ) ) {
 
 			$posted_data = $submission->get_posted_data();
 
-			$api_data                = [];
-			$api_data['form_name']   = sanitize_text_field( $form_name );
-			$api_data['submit_time'] = current_time( 'Y-m-d H:i:s' );
+			$api_data = [];
+
 			foreach ( $mapping as $label => $field_key ) {
 
 				if ( isset( $posted_data[ $field_key ] ) ) {
@@ -214,7 +309,7 @@ if ( ! class_exists( 'Happilee_HFC_Operation' ) ) {
 				}
 			}
 
-			if ( empty( $api_data ) || count( $api_data ) <= 2 ) {
+			if ( empty( $api_data ) || empty( $api_data['phone_number'] ) ) {
 				Happilee_Forms_Connect::log_message( 'No mapped field data found for CF7 form ID ' . $form_id, 'error' );
 				return;
 			}
@@ -247,10 +342,7 @@ if ( ! class_exists( 'Happilee_HFC_Operation' ) ) {
 				return;
 			}
 
-			$api_data                = array();
-			$api_data['form_name']   = sanitize_text_field( $form_name );
-			$api_data['submit_time'] = current_time( 'Y-m-d H:i:s' );
-
+			$api_data     = array();
 			// Define field types to ignore
 			$ignore_types = array(
 				'recaptcha',
@@ -306,7 +398,7 @@ if ( ! class_exists( 'Happilee_HFC_Operation' ) ) {
 				}
 			}
 
-			if ( count( $api_data ) <= 2 ) {
+			if ( empty( $api_data ) || empty( $api_data['phone_number'] ) ) {
 				Happilee_Forms_Connect::log_message( 'No mapped field data found for WPForms form ID ' . $form_id, 'error' );
 				return;
 			}
@@ -343,10 +435,7 @@ if ( ! class_exists( 'Happilee_HFC_Operation' ) ) {
 				return;
 			}
 
-			$api_data                = array();
-			$api_data['form_name']   = sanitize_text_field( $form_name );
-			$api_data['submit_time'] = current_time( 'Y-m-d H:i:s' );
-
+			$api_data     = array();
 			$ignore_types = array(
 				'recaptcha',
 				'captcha',
@@ -405,7 +494,7 @@ if ( ! class_exists( 'Happilee_HFC_Operation' ) ) {
 				$api_data[ $happilee_field ] = $field_value;
 			}
 
-			if ( count( $api_data ) <= 2 ) {
+			if ( empty( $api_data ) || empty( $api_data['phone_number'] ) ) {
 				Happilee_Forms_Connect::log_message( 'No mapped field data found for WPForms form ID ' . $form_id, 'warning' );
 				return;
 			}
@@ -434,10 +523,7 @@ if ( ! class_exists( 'Happilee_HFC_Operation' ) ) {
 				return;
 			}
 
-			$api_data                = array();
-			$api_data['form_name']   = sanitize_text_field( $form_name );
-			$api_data['submit_time'] = current_time( 'Y-m-d H:i:s' );
-
+			$api_data     = array();
 			$ignore_types = array(
 				'recaptcha',
 				'captcha',
@@ -494,7 +580,7 @@ if ( ! class_exists( 'Happilee_HFC_Operation' ) ) {
 				$api_data[ $happilee_field ] = $field_value;
 			}
 
-			if ( count( $api_data ) <= 2 ) {
+			if ( empty( $api_data ) || empty( $api_data['phone_number'] ) ) {
 				Happilee_Forms_Connect::log_message( 'No mapped field data found for WPForms form ID ' . $form_id, 'warning' );
 				return;
 			}
@@ -572,10 +658,7 @@ if ( ! class_exists( 'Happilee_HFC_Operation' ) ) {
 				$form_title = 'Ninja Form #' . $form_id;
 			}
 
-			$api_data                = array();
-			$api_data['form_name']   = sanitize_text_field( $form_title );
-			$api_data['submit_time'] = current_time( 'Y-m-d H:i:s' );
-
+			$api_data = array();
 			foreach ( $mapping as $happilee_field => $ninja_field_key ) {
 
 				foreach ( $submitted_fields as $field ) {
@@ -598,7 +681,7 @@ if ( ! class_exists( 'Happilee_HFC_Operation' ) ) {
 				}
 			}
 
-			if ( count( $api_data ) <= 2 ) {
+			if ( empty( $api_data ) || empty( $api_data['phone_number'] ) ) {
 				Happilee_Forms_Connect::log_message( 'No mapped field data found for Ninja Forms form ID ' . $form_id, 'warning' );
 				return;
 			}
@@ -650,9 +733,7 @@ if ( ! class_exists( 'Happilee_HFC_Operation' ) ) {
 			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Forminator handles nonce verification before this hook fires
 			$submitted_data = isset( $_POST ) ? $_POST : [];
 
-			$api_data                = [];
-			$api_data['form_name']   = $form_model->name;
-			$api_data['submit_time'] = current_time( 'Y-m-d H:i:s' );
+			$api_data = [];
 
 			foreach ( $mapping as $lablel => $field_key ) {
 				if ( isset( $submitted_data[ $field_key ] ) ) {
@@ -669,7 +750,7 @@ if ( ! class_exists( 'Happilee_HFC_Operation' ) ) {
 
 			}
 
-			if ( empty( $api_data ) || count( $api_data ) <= 2 ) {
+			if ( empty( $api_data ) || empty( $api_data['phone_number'] ) ) {
 				Happilee_Forms_Connect::log_message( 'No mapped field data found for Forminator form ID ' . $form_id, 'warning' );
 				return;
 			}
@@ -677,52 +758,5 @@ if ( ! class_exists( 'Happilee_HFC_Operation' ) ) {
 			$this->wphfc_send_to_api( $api_data );
 		}
 
-		/*
-		 * Handle API Communication
-		 */
-		private function wphfc_send_to_api( $api_data ) {
-
-			$api_instance = Happilee_HFC_Api::get_instance();
-			$api_endpoint = $api_instance->get_api_endpoint();
-
-			$api_key = get_option( 'wphfc_api_key', '' );
-
-			if ( empty( $api_endpoint ) ) {
-				Happilee_Forms_Connect::log_message( 'API endpoint is not configured', 'error' );
-				return;
-			}
-
-			if ( empty( $api_key ) ) {
-				Happilee_Forms_Connect::log_message( 'API key is not configured', 'error' );
-				return;
-			}
-
-			$response = wp_remote_post( $api_endpoint, array(
-				'headers' => array(
-					'Authorization' => 'Bearer ' . $api_key,
-					'Content-Type'  => 'application/json',
-				),
-				'body'    => wp_json_encode( $api_data ),
-				'timeout' => 30,
-			) );
-
-			// Handle response
-			if ( is_wp_error( $response ) ) {
-				Happilee_Forms_Connect::log_message( 'API request error: ' . $response->get_error_message(), 'error' );
-				return false;
-			}
-
-			$response_code = wp_remote_retrieve_response_code( $response );
-			$response_body = wp_remote_retrieve_body( $response );
-
-			if ( $response_code !== 200 ) {
-				Happilee_Forms_Connect::log_message(
-					sprintf( 'API error - Status %d: %s', $response_code, $response_body ),
-					'error'
-				);
-				return false;
-			}
-			return true;
-		}
 	}
 }
