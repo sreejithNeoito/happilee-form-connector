@@ -19,7 +19,7 @@ const WPHFC_ApiConfiguration = () => {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            "X-WP-Nonce": happileeConnect.wphfc_nonce,
+            "X-WP-Nonce": happileeConnect.happfoco_nonce,
           },
           credentials: "same-origin",
         },
@@ -48,7 +48,7 @@ const WPHFC_ApiConfiguration = () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-WP-Nonce": happileeConnect.wphfc_nonce,
+        "X-WP-Nonce": happileeConnect.happfoco_nonce,
       },
       body: JSON.stringify({
         // apiEndpoint,

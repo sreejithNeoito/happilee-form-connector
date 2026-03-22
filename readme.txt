@@ -112,6 +112,58 @@ The plugin sends form field names and values, submission timestamp, form name/ID
 
 After configuring your API key and connecting a form, submit a test form. You should see the submission data in your Happilee dashboard. For demo mode testing, form submissions will be sent to the demo endpoint.
 
+== External Services ==
+
+This plugin connects to the following external services:
+
+**1. Happilee API (happilee.io)**
+
+This plugin communicates with the Happilee WhatsApp chatbot platform API to:
+
+* Validate your API key and retrieve your project details — sent once when you save your API credentials in the settings page.
+* Forward form submission data — sent every time a visitor submits a connected WordPress form.
+
+Data sent to Happilee includes: your API key (for authentication), submitted form field values (e.g. name, email, phone), the form name and ID, the page URL where the form was submitted, the submission timestamp, and basic user information (IP address and user agent).
+
+Data is transmitted to the following Happilee API endpoints:
+* `https://devapi.happilee.io/api/v1/getProjectDetails` — API key validation
+* `https://devapi.happilee.io/api/v1/createContact` — form submission forwarding
+
+This service is provided by Happilee (a Meta Business Partner):
+* Website: https://happilee.io
+* Terms of Service: https://happilee.io/terms-and-conditions/
+* Privacy Policy: https://happilee.io/privacy-policy/
+
+No data is sent to Happilee unless a valid API key has been configured and at least one form has been enabled in the plugin settings.
+
+**3. ipapi.co — Country code lookup**
+
+When a form is submitted and no country calling code has been mapped to a field, the plugin automatically detects the visitor's country calling code by sending the visitor's IP address to ipapi.co.
+
+Data sent: the visitor's IP address.
+When: automatically on every form submission where a country code field is not already populated by the form.
+Why: to resolve the correct international phone dialling prefix (e.g. `+44`, `+91`) before forwarding the submission to Happilee.
+
+The request is made to:
+`https://ipapi.co/{visitor_ip}/country_calling_code/`
+
+This service is provided by ipapi.co:
+* Website: https://ipapi.co
+* Terms of Service: https://ipapi.co/terms/
+* Privacy Policy: https://ipapi.co/privacy/
+
+**2. webhook.site (webhook.site) — Demo / testing mode only**
+
+When the demo API key (`demo-test-key-12345`) is used, the plugin routes all API calls to a public webhook.site endpoint instead of the live Happilee API. This allows testing of the plugin without a real Happilee account.
+
+Data sent is identical in structure to what would be sent to Happilee (form field values, form metadata, timestamp, page URL). This data is visible to anyone who has access to the webhook.site token URL.
+
+* Website: https://webhook.site
+* Terms of Service: https://webhook.site/terms-of-service
+* Privacy Policy: https://webhook.site/privacy-policy
+
+This endpoint is used **only** in demo mode and is **never** contacted in normal production use (i.e. when a real Happilee API key is configured).
+
 == Screenshots ==
 
 1. Plugin settings page with API configuration
@@ -158,13 +210,25 @@ This plugin integrates WordPress form submissions with the Happilee WhatsApp cha
 1. Install and activate the plugin
 2. Install Contact Form 7 (or any supported form plugin)
 3. Go to Settings → Happilee Forms Connector
-4. Enter API key: `demo-test-key-12345` (for demo mode)
-5. Click "Save Settings"
+4. Enter API key: `demo-test-key-12345` (activates demo/test mode)
+5. Click "Save Settings" — validation is sent to https://webhook.site (a public HTTP testing service) which returns HTTP 200 so no real Happilee account is needed
 6. Create a simple contact form using Contact Form 7
 7. Navigate to Happilee Forms Connector → Configure Forms
 8. Enable the form and map fields
 9. Submit the test form on the frontend
-10. Form data will be sent to the demo endpoint (webhook.site)
+10. Form data will be POSTed to https://webhook.site/b8f3c2a1-0000-0000-0000-happilee-demo — you can inspect the payload there in real time
+
+**Demo Mode / webhook.site:**
+
+When the API key `demo-test-key-12345` is used, the plugin automatically switches both endpoints (validate and createContact) to point to a public webhook.site URL instead of the live Happilee API. This allows full end-to-end testing with zero Happilee account required.
+
+To use your own webhook.site URL during testing, add this to your theme's `functions.php`:
+
+```php
+add_filter( 'wphfc_api_demo_create_contact_endpoint', function() {
+    return 'https://webhook.site/your-unique-token';
+} );
+```
 
 **Demo Mode:**
 The plugin includes a demo endpoint for testing without requiring actual Happilee credentials. This allows reviewers to verify all functionality including:
@@ -194,19 +258,48 @@ Form submissions are sent as JSON with the following structure:
 
 If you need a production Happilee API key for extended testing, please contact support@happilee.io
 
+== Source Code & Build Process ==
+
+The JavaScript bundled in `assets/js/bundle.js` is compiled from the React source code located in the `app/src/` directory of this plugin.
+
+**Source code is included** in this plugin under `app/src/` and is also publicly available at:
+https://github.com/neoito-hub/happilee-forms-connector
+
+**Build tools required:** Node.js 18+ and npm
+
+**Build steps:**
+
+1. `cd app`
+2. `npm install`
+3. `npm run build`
+
+The compiled output is written to `assets/js/bundle.js` and `assets/css/bundle.css`.
+
+**npm dependencies used** (see `app/package.json` for full list):
+* React & ReactDOM — UI framework
+* react-toastify — toast notifications
+* Tailwind CSS — utility-first styling
+* Webpack — module bundler and minifier
+
 == Developer Information ==
 
 **Hooks & Filters:**
 
-The plugin provides the following filter hook for developers:
+The plugin provides the following filter hooks for developers:
 
-`wphfc_api_endpoint` - Filter the API endpoint URL
+`wphfc_api_validate_endpoint` — Override the live Happilee validation endpoint URL
 
-Example:
+`wphfc_api_create_contact_endpoint` — Override the live Happilee createContact endpoint URL
+
+`wphfc_api_demo_validate_endpoint` — Override the webhook.site URL used during demo mode validation
+
+`wphfc_api_demo_create_contact_endpoint` — Override the webhook.site URL used during demo mode form submission
+
+Example — point demo submissions to your own webhook.site URL:
 ```php
-add_filter('wphfc_api_endpoint', function($endpoint) {
-    return 'https://your-custom-endpoint.com/api';
-});
+add_filter( 'wphfc_api_demo_create_contact_endpoint', function( $endpoint ) {
+    return 'https://webhook.site/your-unique-token';
+} );
 ```
 
 **Database:**

@@ -19,7 +19,7 @@ define('HAPPILEE_FORMS_VERSION', '1.0.0');
 define('HAPPILEE_FORMS_PLUGIN_FILE', __FILE__);
 define('HAPPILEE_FORMS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('HAPPILEE_FORMS_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('HFC_Wordpress_Version', get_bloginfo('version'));
+define('HAPPFOCO_WP_VERSION', get_bloginfo('version'));
 
 /*
  * Include main class.
@@ -27,23 +27,23 @@ define('HFC_Wordpress_Version', get_bloginfo('version'));
 require_once HAPPILEE_FORMS_PLUGIN_DIR . 'includes/class-hfc-main.php';
 
 // Activation hook
-function happilee_forms_connect_activate()
+function happfoco_activate()
 {
 	require_once HAPPILEE_FORMS_PLUGIN_DIR . 'includes/class-hfc-db.php';
-	$db = new happilee_HFC_DB();
-	$db->hfc_create_dataTable();
+	$db = new Happfoco_DB();
+	$db->happfoco_create_table();
 }
-register_activation_hook(HAPPILEE_FORMS_PLUGIN_FILE, 'happilee_forms_connect_activate');
+register_activation_hook(HAPPILEE_FORMS_PLUGIN_FILE, 'happfoco_activate');
 
 // Uninstall hook
-function happilee_forms_connect_uninstall()
+function happfoco_uninstall()
 {
 	require_once HAPPILEE_FORMS_PLUGIN_DIR . 'includes/class-hfc-db.php';
-	$db = new happilee_HFC_DB();
-	$db->hfc_delete_dataTable();
-	delete_option('wphfc_api_key');
+	$db = new Happfoco_DB();
+	$db->happfoco_delete_table();
+	delete_option('happfoco_api_key');
 }
-register_uninstall_hook(HAPPILEE_FORMS_PLUGIN_FILE, 'happilee_forms_connect_uninstall');
+register_uninstall_hook(HAPPILEE_FORMS_PLUGIN_FILE, 'happfoco_uninstall');
 
 // Initialize the plugin
-Happilee_Forms_Connect::get_instance();
+Happfoco_Main::get_instance();
