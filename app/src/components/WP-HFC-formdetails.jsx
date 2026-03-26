@@ -23,7 +23,7 @@ const WPHFC_FormDetails = ({ activeForm }) => {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            "X-WP-Nonce": happileeConnect.wphfc_nonce,
+            "X-WP-Nonce": happileeConnect.happfoco_nonce,
           },
           credentials: "same-origin",
         },
@@ -99,7 +99,7 @@ const WPHFC_FormDetails = ({ activeForm }) => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-WP-Nonce": happileeConnect.wphfc_nonce,
+            "X-WP-Nonce": happileeConnect.happfoco_nonce,
           },
           body: JSON.stringify({
             form_id: String(formId),
