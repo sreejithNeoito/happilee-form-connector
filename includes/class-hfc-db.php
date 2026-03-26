@@ -1,30 +1,30 @@
 <?php
 
-if (!defined('ABSPATH')) {
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-if (!class_exists('Happfoco_DB')) {
+if ( ! class_exists( 'Happfoco_DB' ) ) {
 
-	class Happfoco_DB
-	{
+	class Happfoco_DB {
 
 		private $table_name;
 		private $db_version = '1.0';
 
-		public function __construct()
-		{
+		/**
+		 * Constructor — sets the custom table name using the WordPress prefix.
+		 */
+		public function __construct() {
 			global $wpdb;
 			$this->table_name = $wpdb->prefix . 'happfoco_forms_data';
 		}
 
 		/**
-		 * Check if the table exists in the database
+		 * Check if the plugin's custom table exists in the database.
 		 *
-		 * @return bool True if table exists, false otherwise
+		 * @return bool True if the table exists, false otherwise.
 		 */
-		private function is_table_exists()
-		{
+		private function is_table_exists() {
 			global $wpdb;
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$table = $wpdb->get_var(
@@ -34,24 +34,28 @@ if (!class_exists('Happfoco_DB')) {
 				)
 			);
 
-			return ($table === $this->table_name);
+			return ( $this->table_name === $table );
 		}
 
 		/**
-		 * Check if the table exists, and if not, create it
+		 * Check if the table exists and create it if it does not.
+		 *
+		 * @return void
 		 */
-		public function happfoco_check_and_create_table()
-		{
-			if (!$this->is_table_exists()) {
+		public function happfoco_check_and_create_table() {
+			if ( ! $this->is_table_exists() ) {
 				$this->happfoco_create_table();
 			}
 		}
 
 		/**
-		 * Create the table if it does not exist
+		 * Create the plugin's custom database table using dbDelta.
+		 *
+		 * Also stores the current database schema version as a WordPress option.
+		 *
+		 * @return void
 		 */
-		public function happfoco_create_table()
-		{
+		public function happfoco_create_table() {
 			global $wpdb;
 
 			$charset_collate = $wpdb->get_charset_collate();
@@ -68,23 +72,11 @@ if (!class_exists('Happfoco_DB')) {
 				PRIMARY KEY  (id)
 			) $charset_collate;";
 
-			require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-			dbDelta($sql);
+			require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+			dbDelta( $sql );
 
-			// Store the database version
-			add_option('happfoco_db_version', $this->db_version);
+			// Store the database version.
+			add_option( 'happfoco_db_version', $this->db_version );
 		}
-
-		/**
-		 * Delete the table from the database
-		 */
-		public function happfoco_delete_table()
-		{
-			global $wpdb;
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$wpdb->query("DROP TABLE IF EXISTS {$this->table_name}");
-			delete_option('happfoco_db_version');
-		}
-
 	}
 }

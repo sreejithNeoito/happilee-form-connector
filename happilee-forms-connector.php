@@ -11,15 +11,15 @@
  */
 
 // Exit if accessed directly
-if (!defined('ABSPATH')) {
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define('HAPPILEE_FORMS_VERSION', '1.0.0');
-define('HAPPILEE_FORMS_PLUGIN_FILE', __FILE__);
-define('HAPPILEE_FORMS_PLUGIN_DIR', plugin_dir_path(__FILE__));
-define('HAPPILEE_FORMS_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('HAPPFOCO_WP_VERSION', get_bloginfo('version'));
+define( 'HAPPILEE_FORMS_VERSION', '1.0.0' );
+define( 'HAPPILEE_FORMS_PLUGIN_FILE', __FILE__ );
+define( 'HAPPILEE_FORMS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+define( 'HAPPILEE_FORMS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+define( 'HAPPFOCO_WP_VERSION', get_bloginfo( 'version' ) );
 
 /*
  * Include main class.
@@ -27,23 +27,12 @@ define('HAPPFOCO_WP_VERSION', get_bloginfo('version'));
 require_once HAPPILEE_FORMS_PLUGIN_DIR . 'includes/class-hfc-main.php';
 
 // Activation hook
-function happfoco_activate()
-{
+function happfoco_activate() {
 	require_once HAPPILEE_FORMS_PLUGIN_DIR . 'includes/class-hfc-db.php';
 	$db = new Happfoco_DB();
 	$db->happfoco_create_table();
 }
-register_activation_hook(HAPPILEE_FORMS_PLUGIN_FILE, 'happfoco_activate');
-
-// Uninstall hook
-function happfoco_uninstall()
-{
-	require_once HAPPILEE_FORMS_PLUGIN_DIR . 'includes/class-hfc-db.php';
-	$db = new Happfoco_DB();
-	$db->happfoco_delete_table();
-	delete_option('happfoco_api_key');
-}
-register_uninstall_hook(HAPPILEE_FORMS_PLUGIN_FILE, 'happfoco_uninstall');
+register_activation_hook( HAPPILEE_FORMS_PLUGIN_FILE, 'happfoco_activate' );
 
 // Initialize the plugin
 Happfoco_Main::get_instance();

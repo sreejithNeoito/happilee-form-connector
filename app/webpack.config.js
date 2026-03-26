@@ -56,7 +56,7 @@ module.exports = {
     }),
     new BrowserSyncPlugin(
       {
-        proxy: "http://localhost/test-web/",
+        proxy: "http://localhost/happilee-connect/",
         files: [
           "**/*.php",
           "build/*.js",
@@ -69,7 +69,7 @@ module.exports = {
       },
       {
         reload: true,
-      }
+      },
     ),
   ],
 };

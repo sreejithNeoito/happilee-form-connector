@@ -262,8 +262,7 @@ If you need a production Happilee API key for extended testing, please contact s
 
 The JavaScript bundled in `assets/js/bundle.js` is compiled from the React source code located in the `app/src/` directory of this plugin.
 
-**Source code is included** in this plugin under `app/src/` and is also publicly available at:
-https://github.com/neoito-hub/happilee-forms-connector
+**Source code is included** in this plugin under `app/src/`
 
 **Build tools required:** Node.js 18+ and npm
 
