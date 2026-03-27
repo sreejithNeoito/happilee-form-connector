@@ -755,8 +755,12 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 				return;
 			}
 
-			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Forminator handles nonce verification before this hook fires
-			$submitted_data = isset( $_POST ) ? $_POST : array();
+			// phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce verification is handled by Forminator before this hook fires.
+			if ( empty( $_POST ) ) {
+				return;
+			}
+			$submitted_data = wp_unslash( $_POST );
+			// phpcs:enable WordPress.Security.NonceVerification.Missing  ← rule back on from here
 
 			$api_data = array();
 
@@ -770,7 +774,7 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 					} else {
 						$field_value = sanitize_text_field( $field_value );
 					}
-					$api_data[ $label ] = sanitize_text_field( $field_value );
+					$api_data[ $label ] = $field_value;
 				}
 
 			}

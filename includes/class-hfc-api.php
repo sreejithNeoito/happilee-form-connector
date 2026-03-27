@@ -274,6 +274,16 @@ if ( ! class_exists( 'Happfoco_Api' ) ) {
 					'methods'             => 'POST',
 					'callback'            => array( $this, 'happfoco_save_api_settings' ),
 					'permission_callback' => array( $this, 'check_permission' ),
+					'args'                => array(
+						'apiKey' => array(
+							'required'          => true,
+							'type'              => 'string',
+							'sanitize_callback' => 'sanitize_text_field',
+							'validate_callback' => function ( $value ) {
+								return is_string( $value ) && '' !== trim( $value );
+							},
+						),
+					),
 				)
 			);
 
@@ -284,6 +294,42 @@ if ( ! class_exists( 'Happfoco_Api' ) ) {
 					'methods'             => 'POST',
 					'callback'            => array( $this, 'happfoco_save_form_settings' ),
 					'permission_callback' => array( $this, 'check_permission' ),
+					'args'                => array(
+						'form_id'     => array(
+							'required'          => true,
+							'type'              => 'string',
+							'sanitize_callback' => 'sanitize_text_field',
+							'validate_callback' => function ( $value ) {
+								return is_string( $value ) && '' !== trim( $value );
+							},
+						),
+						'form_type'   => array(
+							'required'          => true,
+							'type'              => 'string',
+							'sanitize_callback' => 'sanitize_text_field',
+							'validate_callback' => function ( $value ) {
+								return in_array( $value, array( 'cf7', 'wpforms', 'ninja_forms', 'forminator' ), true );
+							},
+						),
+						'form_name'   => array(
+							'required'          => false,
+							'type'              => 'string',
+							'sanitize_callback' => 'sanitize_text_field',
+						),
+						'active_hook' => array(
+							'required'          => false,
+							'type'              => 'string',
+							'sanitize_callback' => 'sanitize_key',
+						),
+						'is_enabled'  => array(
+							'required'          => false,
+							'type'              => 'integer',
+							'sanitize_callback' => 'absint',
+							'validate_callback' => function ( $value ) {
+								return in_array( (int) $value, array( 0, 1 ), true );
+							},
+						),
+					),
 				)
 			);
 
@@ -294,6 +340,24 @@ if ( ! class_exists( 'Happfoco_Api' ) ) {
 					'methods'             => 'POST',
 					'callback'            => array( $this, 'happfoco_get_form_fields' ),
 					'permission_callback' => array( $this, 'check_permission' ),
+					'args'                => array(
+						'form_id'   => array(
+							'required'          => true,
+							'type'              => 'string',
+							'sanitize_callback' => 'sanitize_text_field',
+							'validate_callback' => function ( $value ) {
+								return is_string( $value ) && '' !== trim( $value );
+							},
+						),
+						'form_type' => array(
+							'required'          => true,
+							'type'              => 'string',
+							'sanitize_callback' => 'sanitize_text_field',
+							'validate_callback' => function ( $value ) {
+								return in_array( $value, array( 'cf7', 'wpforms', 'ninja_forms', 'forminator' ), true );
+							},
+						),
+					),
 				)
 			);
 
