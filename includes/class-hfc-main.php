@@ -28,6 +28,7 @@ if ( ! class_exists( 'Happfoco_Main' ) ) {
 		private function __construct() {
 			add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
 			add_action( 'admin_enqueue_scripts', array( $this, 'happfoco_load_scripts' ) );
+			add_action( 'plugins_loaded', array( $this, 'maybe_create_table' ), 10 );
 			add_action( 'plugins_loaded', array( $this, 'load_api_class' ), 20 );
 			add_action( 'plugins_loaded', array( $this, 'init_operation_class' ), 20 );
 
@@ -36,6 +37,21 @@ if ( ! class_exists( 'Happfoco_Main' ) ) {
 				'plugin_action_links_' . plugin_basename( HAPPILEE_FORMS_PLUGIN_FILE ),
 				array( $this, 'add_plugin_action_links' )
 			);
+		}
+
+		/**
+		 * Ensure the plugin database table exists.
+		 *
+		 * Runs on every plugins_loaded so the table is created automatically
+		 * after a manual database reset, a site migration, or a plugin update
+		 * that bypassed the activation hook.
+		 *
+		 * @return void
+		 */
+		public function maybe_create_table() {
+			require_once HAPPILEE_FORMS_PLUGIN_DIR . 'includes/class-hfc-db.php';
+			$db = new Happfoco_DB();
+			$db->happfoco_check_and_create_table();
 		}
 
 		/**

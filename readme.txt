@@ -1,12 +1,12 @@
 === Happilee Forms Connector ===
 Contributors: happilee
-Author: Neoito
+Author: happilee
 Author URI: https://neoito.com
 Donate link: https://happilee.io/pricing
 Tags: happilee, whatsapp, chatbot, contact form, api integration
 Requires at least: 5.0
 Tested up to: 6.9
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -61,14 +61,14 @@ Happilee is a Meta Business Partner providing WhatsApp chatbot services that hel
 
 **Testing Without Happilee Account:**
 
-The plugin includes a demo endpoint for testing purposes. You can test the plugin functionality before signing up for Happilee:
+The plugin includes a demo mode for testing purposes. You can test the plugin functionality before signing up for Happilee:
 
 1. Install and activate the plugin
 2. Install one of the supported form plugins (e.g., Contact Form 7)
 3. Create a test form
-4. In Happilee Forms Connector settings, you can use demo API key: `demo-test-key-12345`
+4. In Happilee Forms Connector settings, enter the demo API key: `demo-test-key-12345`
 5. Submit the test form
-6. Form data will be sent to the demo endpoint for verification
+6. Form data will be routed to the demo endpoint for verification
 
 == Frequently Asked Questions ==
 
@@ -90,7 +90,7 @@ Log in to your Happilee dashboard and navigate to Project → Settings → Integ
 
 = Can I test the plugin before getting a Happilee account? =
 
-Yes! The plugin includes a demo endpoint for testing. Use the API key `demo-test-key-12345` in the settings to test form submissions. This allows you to verify the plugin works before signing up for Happilee.
+Yes! The plugin includes a demo mode for testing. Use the API key `demo-test-key-12345` in the settings to test form submissions. This allows you to verify the plugin works before signing up for Happilee.
 
 = Is the data transmission secure? =
 
@@ -110,7 +110,7 @@ The plugin sends form field names and values, submission timestamp, form name/ID
 
 = How do I verify the plugin is working? =
 
-After configuring your API key and connecting a form, submit a test form. You should see the submission data in your Happilee dashboard. For demo mode testing, form submissions will be sent to the demo endpoint.
+After configuring your API key and connecting a form, submit a test form. You should see the submission data in your Happilee dashboard. For demo mode testing, form submissions will be routed to the demo endpoint.
 
 == External Services ==
 
@@ -126,8 +126,8 @@ This plugin communicates with the Happilee WhatsApp chatbot platform API to:
 Data sent to Happilee includes: your API key (for authentication), submitted form field values (e.g. name, email, phone), the form name and ID, the page URL where the form was submitted, the submission timestamp, and basic user information (IP address and user agent).
 
 Data is transmitted to the following Happilee API endpoints:
-* `https://devapi.happilee.io/api/v1/getProjectDetails` — API key validation
-* `https://devapi.happilee.io/api/v1/createContact` — form submission forwarding
+* `https://api.happilee.io/api/v1/getProjectDetails` — API key validation
+* `https://api.happilee.io/api/v1/createContact` — form submission forwarding
 
 This service is provided by Happilee (a Meta Business Partner):
 * Website: https://happilee.io
@@ -136,7 +136,7 @@ This service is provided by Happilee (a Meta Business Partner):
 
 No data is sent to Happilee unless a valid API key has been configured and at least one form has been enabled in the plugin settings.
 
-**3. ipapi.co — Country code lookup**
+**2. ipapi.co — Country code lookup**
 
 When a form is submitted and no country calling code has been mapped to a field, the plugin automatically detects the visitor's country calling code by sending the visitor's IP address to ipapi.co.
 
@@ -152,7 +152,7 @@ This service is provided by ipapi.co:
 * Terms of Service: https://ipapi.co/terms/
 * Privacy Policy: https://ipapi.co/privacy/
 
-**2. webhook.site (webhook.site) — Demo / testing mode only**
+**3. webhook.site (webhook.site) — Demo / testing mode only**
 
 When the demo API key (`demo-test-key-12345`) is used, the plugin routes all API calls to a public webhook.site endpoint instead of the live Happilee API. This allows testing of the plugin without a real Happilee account.
 
@@ -174,6 +174,15 @@ This endpoint is used **only** in demo mode and is **never** contacted in normal
 
 == Changelog ==
 
+= 1.0.1 =
+* Added REST API parameter validation with sanitize_callback and validate_callback for all endpoints
+* Fixed missing wp_unslash() on $_POST access in Forminator submission handler
+* Fixed redundant double-sanitization of form field values
+* Added External Services disclosure section
+* Corrected database option cleanup on uninstall (encryption key and db version options now removed)
+* Removed development source files from distributed zip
+* Updated Tested up to: 6.7
+
 = 1.0.0 =
 * Initial release
 * Support for Contact Form 7
@@ -187,6 +196,9 @@ This endpoint is used **only** in demo mode and is **never** contacted in normal
 * Real-time form data transmission
 
 == Upgrade Notice ==
+
+= 1.0.1 =
+Security and compliance update. Adds REST API input validation, fixes sanitization issues, and improves uninstall cleanup. Upgrade recommended for all users.
 
 = 1.0.0 =
 Initial release of Happilee Forms Connector. Connect your WordPress forms to Happilee WhatsApp chatbot platform with secure API integration.
@@ -211,32 +223,24 @@ This plugin integrates WordPress form submissions with the Happilee WhatsApp cha
 2. Install Contact Form 7 (or any supported form plugin)
 3. Go to Settings → Happilee Forms Connector
 4. Enter API key: `demo-test-key-12345` (activates demo/test mode)
-5. Click "Save Settings" — validation is sent to https://webhook.site (a public HTTP testing service) which returns HTTP 200 so no real Happilee account is needed
+5. Click "Save Settings" — the plugin validates the key against a webhook.site demo endpoint which always returns HTTP 200, so no real Happilee account is needed
 6. Create a simple contact form using Contact Form 7
 7. Navigate to Happilee Forms Connector → Configure Forms
 8. Enable the form and map fields
 9. Submit the test form on the frontend
-10. Form data will be POSTed to https://webhook.site/b8f3c2a1-0000-0000-0000-happilee-demo — you can inspect the payload there in real time
+10. The form payload is sent to the webhook.site demo endpoint — the response confirms successful transmission
 
-**Demo Mode / webhook.site:**
+**Demo Mode:**
 
-When the API key `demo-test-key-12345` is used, the plugin automatically switches both endpoints (validate and createContact) to point to a public webhook.site URL instead of the live Happilee API. This allows full end-to-end testing with zero Happilee account required.
+When the API key `demo-test-key-12345` is used, the plugin automatically switches both endpoints (validate and createContact) to point to a public webhook.site URL instead of the live Happilee API. This allows full end-to-end testing with no Happilee account required.
 
-To use your own webhook.site URL during testing, add this to your theme's `functions.php`:
+The demo webhook.site endpoint URL can be overridden with your own webhook.site token by adding this to your theme's `functions.php`:
 
 ```php
-add_filter( 'wphfc_api_demo_create_contact_endpoint', function() {
+add_filter( 'happfoco_api_demo_create_contact_endpoint', function( $endpoint ) {
     return 'https://webhook.site/your-unique-token';
 } );
 ```
-
-**Demo Mode:**
-The plugin includes a demo endpoint for testing without requiring actual Happilee credentials. This allows reviewers to verify all functionality including:
-- API configuration and validation
-- Form detection and listing
-- Field mapping interface
-- Form submission handling
-- Data transmission to API endpoint
 
 **What Gets Sent:**
 Form submissions are sent as JSON with the following structure:
@@ -252,17 +256,15 @@ Form submissions are sent as JSON with the following structure:
 - API keys stored with AES-256-CBC encryption
 - All API requests use HTTPS
 - Rate limiting on API verification
-- Data sanitization and validation
-- WordPress nonce verification
-- Capability checks (administrator/manage_woocommerce)
+- REST API parameter validation with sanitize_callback and validate_callback
+- Data sanitization on all form field values
+- Capability checks (manage_options)
 
 If you need a production Happilee API key for extended testing, please contact support@happilee.io
 
 == Source Code & Build Process ==
 
-The JavaScript bundled in `assets/js/bundle.js` is compiled from the React source code located in the `app/src/` directory of this plugin.
-
-**Source code is included** in this plugin under `app/src/` and is also publicly available at:
+The JavaScript bundled in `assets/js/bundle.js` is compiled from React source code publicly available at:
 https://github.com/sreejithNeoito/happilee-form-connector
 
 **Build tools required:** Node.js 18+ and npm
@@ -287,23 +289,23 @@ The compiled output is written to `assets/js/bundle.js` and `assets/css/bundle.c
 
 The plugin provides the following filter hooks for developers:
 
-`wphfc_api_validate_endpoint` — Override the live Happilee validation endpoint URL
+`happfoco_api_validate_endpoint` — Override the live Happilee validation endpoint URL
 
-`wphfc_api_create_contact_endpoint` — Override the live Happilee createContact endpoint URL
+`happfoco_api_create_contact_endpoint` — Override the live Happilee createContact endpoint URL
 
-`wphfc_api_demo_validate_endpoint` — Override the webhook.site URL used during demo mode validation
+`happfoco_api_demo_validate_endpoint` — Override the webhook.site URL used during demo mode validation
 
-`wphfc_api_demo_create_contact_endpoint` — Override the webhook.site URL used during demo mode form submission
+`happfoco_api_demo_create_contact_endpoint` — Override the webhook.site URL used during demo mode form submission
 
 Example — point demo submissions to your own webhook.site URL:
 ```php
-add_filter( 'wphfc_api_demo_create_contact_endpoint', function( $endpoint ) {
+add_filter( 'happfoco_api_demo_create_contact_endpoint', function( $endpoint ) {
     return 'https://webhook.site/your-unique-token';
 } );
 ```
 
 **Database:**
-The plugin creates a custom table `wp_hfc_forms_data` to store form configuration and field mappings.
+The plugin creates a custom table `wp_happfoco_forms_data` to store form configuration and field mappings.
 
 **Requirements:**
 - OpenSSL PHP extension (for API key encryption)
