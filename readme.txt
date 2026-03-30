@@ -6,7 +6,7 @@ Donate link: https://happilee.io/pricing
 Tags: happilee, whatsapp, chatbot, contact form, api integration
 Requires at least: 5.0
 Tested up to: 6.9
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -131,7 +131,7 @@ Data is transmitted to the following Happilee API endpoints:
 
 This service is provided by Happilee (a Meta Business Partner):
 * Website: https://happilee.io
-* Terms of Service: https://happilee.io/terms-and-conditions/
+* Terms of Service: https://happilee.io/terms-of-use/
 * Privacy Policy: https://happilee.io/privacy-policy/
 
 No data is sent to Happilee unless a valid API key has been configured and at least one form has been enabled in the plugin settings.
@@ -159,8 +159,8 @@ When the demo API key (`demo-test-key-12345`) is used, the plugin routes all API
 Data sent is identical in structure to what would be sent to Happilee (form field values, form metadata, timestamp, page URL). This data is visible to anyone who has access to the webhook.site token URL.
 
 * Website: https://webhook.site
-* Terms of Service: https://webhook.site/terms-of-service
-* Privacy Policy: https://webhook.site/privacy-policy
+* Terms of Service: https://webhook.site/terms
+* Privacy Policy: https://webhook.site/terms
 
 This endpoint is used **only** in demo mode and is **never** contacted in normal production use (i.e. when a real Happilee API key is configured).
 
@@ -173,6 +173,10 @@ This endpoint is used **only** in demo mode and is **never** contacted in normal
 5. Connected forms management
 
 == Changelog ==
+
+= 1.0.2 =
+* Fixed broken Terms of Service and Privacy Policy URLs in External Services section
+* Added automatic database table creation on plugins_loaded to prevent missing table errors after migration or manual updates
 
 = 1.0.1 =
 * Added REST API parameter validation with sanitize_callback and validate_callback for all endpoints
@@ -196,9 +200,6 @@ This endpoint is used **only** in demo mode and is **never** contacted in normal
 * Real-time form data transmission
 
 == Upgrade Notice ==
-
-= 1.0.1 =
-Security and compliance update. Adds REST API input validation, fixes sanitization issues, and improves uninstall cleanup. Upgrade recommended for all users.
 
 = 1.0.0 =
 Initial release of Happilee Forms Connector. Connect your WordPress forms to Happilee WhatsApp chatbot platform with secure API integration.
