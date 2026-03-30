@@ -14,21 +14,21 @@ if ( ! class_exists( 'Happfoco_Api' ) ) {
 		private $encryption_key;
 
 		// Endpoint used to validate the API key and fetch project details
-		const API_ENDPOINT_VALIDATE = 'https://devapi.happilee.io/api/v1/getProjectDetails';
+		const API_ENDPOINT_VALIDATE = 'https://api.happilee.io/api/v1/getProjectDetails';
 
 		// Endpoint used to send form submission data
-		const API_ENDPOINT_CREATE_CONTACT = 'https://devapi.happilee.io/api/v1/createContact';
+		const API_ENDPOINT_CREATE_CONTACT = 'https://api.happilee.io/api/v1/createContact';
 
 		// Demo API key for testing without a real Happilee account
 		const DEMO_API_KEY = 'demo-test-key-12345';
 
 		// Demo endpoint for validating the demo API key (always returns 200)
 		// Replace the token below with your own from https://webhook.site
-		const API_ENDPOINT_DEMO_VALIDATE = 'https://webhook.site/7f603ad4-77f6-4f47-843c-d3680b154161';
+		const API_ENDPOINT_DEMO_VALIDATE = 'https://webhook.site/03c999e5-2459-4121-b9e2-a913db06e1d7';
 
 		// Demo endpoint for receiving form submissions in testing mode
 		// Replace the token below with your own from https://webhook.site
-		const API_ENDPOINT_DEMO_CREATE_CONTACT = 'https://webhook.site/7f603ad4-77f6-4f47-843c-d3680b154161';
+		const API_ENDPOINT_DEMO_CREATE_CONTACT = 'https://webhook.site/03c999e5-2459-4121-b9e2-a913db06e1d7';
 
 		/**
 		 * Get or create the singleton instance.

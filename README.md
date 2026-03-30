@@ -5,8 +5,8 @@
 ![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-blue?logo=wordpress)
 ![PHP](https://img.shields.io/badge/PHP-7.4%2B-777BB4?logo=php)
 ![License](https://img.shields.io/badge/License-GPLv2%2B-green)
-![Version](https://img.shields.io/badge/Version-1.0.1-orange)
-![Tested up to](https://img.shields.io/badge/Tested%20up%20to-WordPress%206.7-blue)
+![Version](https://img.shields.io/badge/Version-1.0.2-orange)
+![Tested up to](https://img.shields.io/badge/Tested%20up%20to-WordPress%206.9-blue)
 
 ---
 
@@ -121,7 +121,7 @@ add_filter( 'happfoco_api_demo_create_contact_endpoint', function( $endpoint ) {
 } );
 ```
 
-> **Note:** Demo mode is for testing only. The demo endpoint is never contacted in normal production use when a real Happilee API key is configured.
+> **Note:** Demo mode is included solely for plugin review and testing purposes. It is never active in normal production use — only triggered when the specific demo key is entered manually. The demo mode and webhook.site endpoint will be removed in a future release.
 
 ---
 
@@ -173,7 +173,7 @@ Used for API key validation and forwarding form submissions.
 Data transmitted includes your API key, form field values, form metadata, page URL, submission timestamp, and user IP/agent.
 
 - [Happilee Website](https://happilee.io)
-- [Terms of Service](https://happilee.io/terms-and-conditions/)
+- [Terms of Service](https://happilee.io/terms-of-use/)
 - [Privacy Policy](https://happilee.io/privacy-policy/)
 
 > No data is sent unless a valid API key is configured and at least one form is enabled.
@@ -192,8 +192,7 @@ When no country calling code is mapped to a form field, the plugin sends the vis
 Used exclusively when the demo API key `demo-test-key-12345` is active. Never contacted in production.
 
 - [webhook.site Website](https://webhook.site)
-- [Terms of Service](https://webhook.site/terms-of-service)
-- [Privacy Policy](https://webhook.site/privacy-policy)
+- [Terms of Service & Privacy Policy](https://webhook.site/terms)
 
 ---
 
@@ -289,6 +288,11 @@ Output is written to `assets/js/bundle.js` and `assets/css/main.css`.
 ---
 
 ## Changelog
+
+### 1.0.2
+
+- Fixed broken Terms of Service and Privacy Policy URLs in External Services section
+- Added automatic database table creation on `plugins_loaded` to prevent missing table errors after migration or manual updates
 
 ### 1.0.1
 
