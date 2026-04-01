@@ -167,7 +167,7 @@ const WPHFC_HookModal = ({
             "X-WP-Nonce": happileeConnect.happfoco_nonce,
           },
           body: JSON.stringify({
-            form_id: formId,
+            form_id: String(formId),
             form_type: formType,
           }),
           credentials: "same-origin",
