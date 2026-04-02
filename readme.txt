@@ -183,6 +183,9 @@ This service is provided by ipapi.co:
 
 == Upgrade Notice ==
 
+= 1.0.5 =
+Bug fix update. Resolves form field listing issue with form_id type mismatch. Upgrade recommended for all users.
+
 = 1.0.0 =
 Initial release of Happilee Forms Connector. Connect your WordPress forms to Happilee WhatsApp chatbot platform with secure API integration.
 
@@ -195,21 +198,3 @@ For Happilee platform support and API documentation, visit your Happilee dashboa
 
 **Privacy:**
 This plugin transmits form submission data to the Happilee API. Please review Happilee's privacy policy and ensure compliance with your local data protection regulations (GDPR, CCPA, etc.).
-
-== Developer Information ==
-
-**Hooks & Filters:**
-
-The plugin provides the following filter hooks for developers:
-
-`happfoco_api_validate_endpoint` — Override the live Happilee validation endpoint URL
-
-`happfoco_api_create_contact_endpoint` — Override the live Happilee createContact endpoint URL
-
-**Database:**
-The plugin creates a custom table `wp_happfoco_forms_data` to store form configuration and field mappings.
-
-**Requirements:**
-- OpenSSL PHP extension (for API key encryption)
-- WordPress REST API enabled
-- One or more supported form plugins
