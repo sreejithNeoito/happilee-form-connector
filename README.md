@@ -5,7 +5,7 @@
 ![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-blue?logo=wordpress)
 ![PHP](https://img.shields.io/badge/PHP-7.4%2B-777BB4?logo=php)
 ![License](https://img.shields.io/badge/License-GPLv2%2B-green)
-![Version](https://img.shields.io/badge/Version-1.0.5-orange)
+![Version](https://img.shields.io/badge/Version-1.0.6-orange)
 ![Tested up to](https://img.shields.io/badge/Tested%20up%20to-WordPress%206.7-blue)
 
 ---
@@ -254,6 +254,10 @@ Output is written to `assets/js/bundle.js` and `assets/css/main.css`.
 ---
 
 ## Changelog
+
+### 1.0.6
+
+- Removed README.md from distributed plugin package
 
 ### 1.0.5
 

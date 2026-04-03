@@ -6,7 +6,7 @@ Donate link: https://happilee.io/pricing
 Tags: happilee, whatsapp, chatbot, contact form, api integration
 Requires at least: 5.0
 Tested up to: 6.9
-Stable tag: 1.0.5
+Stable tag: 1.0.6
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -145,6 +145,9 @@ This service is provided by ipapi.co:
 5. Connected forms management
 
 == Changelog ==
+
+= 1.0.6 =
+* Removed README.md from distributed plugin package
 
 = 1.0.5 =
 * Fixed issue with form_id type mismatch
