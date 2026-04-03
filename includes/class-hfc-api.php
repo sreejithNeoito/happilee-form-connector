@@ -19,17 +19,6 @@ if ( ! class_exists( 'Happfoco_Api' ) ) {
 		// Endpoint used to send form submission data
 		const API_ENDPOINT_CREATE_CONTACT = 'https://api.happilee.io/api/v1/createContact';
 
-		// Demo API key for testing without a real Happilee account
-		const DEMO_API_KEY = 'demo-test-key-12345';
-
-		// Demo endpoint for validating the demo API key (always returns 200)
-		// Replace the token below with your own from https://webhook.site
-		const API_ENDPOINT_DEMO_VALIDATE = 'https://webhook.site/03c999e5-2459-4121-b9e2-a913db06e1d7';
-
-		// Demo endpoint for receiving form submissions in testing mode
-		// Replace the token below with your own from https://webhook.site
-		const API_ENDPOINT_DEMO_CREATE_CONTACT = 'https://webhook.site/03c999e5-2459-4121-b9e2-a913db06e1d7';
-
 		/**
 		 * Get or create the singleton instance.
 		 *
@@ -198,55 +187,20 @@ if ( ! class_exists( 'Happfoco_Api' ) ) {
 		}
 
 		/**
-		 * Check whether the plugin is running in demo/test mode.
-		 *
-		 * Demo mode is active when the stored API key matches DEMO_API_KEY.
-		 *
-		 * @param string|null $api_key Optional plain-text API key to test. Uses stored key when null.
-		 * @return bool True when in demo mode.
-		 */
-		public function is_demo_mode( $api_key = null ) {
-			if ( null === $api_key ) {
-				$api_key = $this->get_api_key();
-			}
-			return ( self::DEMO_API_KEY === $api_key );
-		}
-
-		/**
 		 * Get the API endpoint used for validating the key / fetching project details.
 		 *
-		 * In demo mode (API key = 'demo-test-key-12345'), returns the public webhook.site
-		 * demo endpoint which always responds HTTP 200. This lets plugin reviewers and
-		 * new users verify every feature without a real Happilee account.
-		 *
-		 * To use your own webhook.site URL:
-		 *   add_filter( 'happfoco_api_demo_validate_endpoint', fn() => 'https://webhook.site/your-token' );
-		 *
-		 * @param string|null $api_key Optional plain-text API key. Uses stored key when null.
 		 * @return string Endpoint URL.
 		 */
-		public function get_validate_endpoint( $api_key = null ) {
-			if ( $this->is_demo_mode( $api_key ) ) {
-				return apply_filters( 'happfoco_api_demo_validate_endpoint', self::API_ENDPOINT_DEMO_VALIDATE );
-			}
+		public function get_validate_endpoint() {
 			return apply_filters( 'happfoco_api_validate_endpoint', self::API_ENDPOINT_VALIDATE );
 		}
 
 		/**
 		 * Get the API endpoint used for sending form submission data (createContact).
 		 *
-		 * In demo mode, returns the webhook.site demo endpoint so form submissions can be
-		 * inspected in real time at https://webhook.site without a Happilee account.
-		 *
-		 * To use your own webhook.site URL:
-		 *   add_filter( 'happfoco_api_demo_create_contact_endpoint', fn() => 'https://webhook.site/your-token' );
-		 *
 		 * @return string Endpoint URL.
 		 */
 		public function get_create_contact_endpoint() {
-			if ( $this->is_demo_mode() ) {
-				return apply_filters( 'happfoco_api_demo_create_contact_endpoint', self::API_ENDPOINT_DEMO_CREATE_CONTACT );
-			}
 			return apply_filters( 'happfoco_api_create_contact_endpoint', self::API_ENDPOINT_CREATE_CONTACT );
 		}
 
@@ -441,8 +395,7 @@ if ( ! class_exists( 'Happfoco_Api' ) ) {
 			}
 
 			// Validate the API key by fetching project details.
-			// Passing $api_key here lets demo mode be detected before the key is encrypted.
-			$validate_endpoint = $this->get_validate_endpoint( $api_key );
+			$validate_endpoint = $this->get_validate_endpoint();
 
 			$response = wp_remote_get(
 				esc_url_raw( $validate_endpoint ),
@@ -512,19 +465,17 @@ if ( ! class_exists( 'Happfoco_Api' ) ) {
 		/**
 		 * Get API settings with decryption.
 		 *
-		 * Returns the decrypted API key along with the active endpoint URLs.
+		 * Returns the decrypted API key.
 		 *
 		 * @param WP_REST_Request $request Full request object.
-		 * @return WP_REST_Response Response containing the API key and endpoint URLs.
+		 * @return WP_REST_Response Response containing the API key.
 		 */
 		public function happfoco_get_api_settings( WP_REST_Request $request ) {
 			$decrypted_key = $this->get_api_key();
 			return new WP_REST_Response(
 				array(
-					'success'                  => true,
-					'apiValidateEndpoint'      => $this->get_validate_endpoint(),
-					'apiCreateContactEndpoint' => $this->get_create_contact_endpoint(),
-					'apiKey'                   => $decrypted_key,
+					'success' => true,
+					'apiKey'  => $decrypted_key,
 				),
 				200
 			);

@@ -5,8 +5,8 @@
 ![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-blue?logo=wordpress)
 ![PHP](https://img.shields.io/badge/PHP-7.4%2B-777BB4?logo=php)
 ![License](https://img.shields.io/badge/License-GPLv2%2B-green)
-![Version](https://img.shields.io/badge/Version-1.0.2-orange)
-![Tested up to](https://img.shields.io/badge/Tested%20up%20to-WordPress%206.9-blue)
+![Version](https://img.shields.io/badge/Version-1.0.6-orange)
+![Tested up to](https://img.shields.io/badge/Tested%20up%20to-WordPress%206.7-blue)
 
 ---
 
@@ -18,12 +18,10 @@
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Configuration](#configuration)
-- [Demo Mode](#demo-mode)
 - [How It Works](#how-it-works)
 - [External Services](#external-services)
 - [Security](#security)
 - [Developer Reference](#developer-reference)
-- [Build Process](#build-process)
 - [Changelog](#changelog)
 - [License](#license)
 
@@ -54,7 +52,6 @@ Happilee Forms Connector seamlessly integrates your WordPress contact forms with
 - Secure API key storage using AES-256-CBC encryption
 - Real-time data transmission on every form submission
 - Simple settings page with field mapping interface
-- Built-in demo mode for testing without a Happilee account
 - Automatic country calling code detection via IP lookup
 
 ---
@@ -103,28 +100,6 @@ Happilee Forms Connector seamlessly integrates your WordPress contact forms with
 
 ---
 
-## Demo Mode
-
-You can test the full plugin workflow without a Happilee account using the built-in demo mode.
-
-1. In the API Configuration settings, enter the demo key: `demo-test-key-12345`
-2. Save settings — the plugin routes all API calls to a demo endpoint instead of the live Happilee API
-3. Create and submit a test form
-4. The submission payload is forwarded to the demo endpoint and a success response is returned
-
-The demo endpoint URL can be overridden with your own [webhook.site](https://webhook.site) token:
-
-```php
-// Add to your theme's functions.php
-add_filter( 'happfoco_api_demo_create_contact_endpoint', function( $endpoint ) {
-    return 'https://webhook.site/your-unique-token';
-} );
-```
-
-> **Note:** Demo mode is included solely for plugin review and testing purposes. It is never active in normal production use — only triggered when the specific demo key is entered manually. The demo mode and webhook.site endpoint will be removed in a future release.
-
----
-
 ## How It Works
 
 ```
@@ -165,10 +140,10 @@ This plugin makes HTTP requests to the following third-party services.
 
 Used for API key validation and forwarding form submissions.
 
-| Endpoint                                           | Purpose                       |
-| -------------------------------------------------- | ----------------------------- |
-| `https://api.happilee.io/api/v1/getProjectDetails` | Validates your API key        |
-| `https://api.happilee.io/api/v1/createContact`     | Forwards form submission data |
+| Endpoint                                              | Purpose                       |
+| ----------------------------------------------------- | ----------------------------- |
+| `https://devapi.happilee.io/api/v1/getProjectDetails` | Validates your API key        |
+| `https://devapi.happilee.io/api/v1/createContact`     | Forwards form submission data |
 
 Data transmitted includes your API key, form field values, form metadata, page URL, submission timestamp, and user IP/agent.
 
@@ -186,13 +161,6 @@ When no country calling code is mapped to a form field, the plugin sends the vis
 - [ipapi.co Website](https://ipapi.co)
 - [Terms of Service](https://ipapi.co/terms/)
 - [Privacy Policy](https://ipapi.co/privacy/)
-
-### 3. webhook.site — Demo mode only
-
-Used exclusively when the demo API key `demo-test-key-12345` is active. Never contacted in production.
-
-- [webhook.site Website](https://webhook.site)
-- [Terms of Service & Privacy Policy](https://webhook.site/terms)
 
 ---
 
@@ -212,19 +180,17 @@ Used exclusively when the demo API key `demo-test-key-12345` is active. Never co
 
 ### Filter Hooks
 
-| Filter                                      | Description                                           |
-| ------------------------------------------- | ----------------------------------------------------- |
-| `happfoco_api_validate_endpoint`            | Override the live Happilee validation endpoint URL    |
-| `happfoco_api_create_contact_endpoint`      | Override the live Happilee createContact endpoint URL |
-| `happfoco_api_demo_validate_endpoint`       | Override the demo validation endpoint URL             |
-| `happfoco_api_demo_create_contact_endpoint` | Override the demo createContact endpoint URL          |
+| Filter                                 | Description                                           |
+| -------------------------------------- | ----------------------------------------------------- |
+| `happfoco_api_validate_endpoint`       | Override the live Happilee validation endpoint URL    |
+| `happfoco_api_create_contact_endpoint` | Override the live Happilee createContact endpoint URL |
 
 **Example:**
 
 ```php
-// Redirect demo submissions to your own webhook.site token
-add_filter( 'happfoco_api_demo_create_contact_endpoint', function( $endpoint ) {
-    return 'https://webhook.site/your-unique-token';
+// Override the live Happilee validation endpoint
+add_filter( 'happfoco_api_validate_endpoint', function( $endpoint ) {
+    return 'https://your-custom-endpoint.com/validate';
 } );
 ```
 
@@ -289,6 +255,24 @@ Output is written to `assets/js/bundle.js` and `assets/css/main.css`.
 
 ## Changelog
 
+### 1.0.6
+
+- Removed README.md from distributed plugin package
+
+### 1.0.5
+
+- Fixed issue with form_id type mismatch
+- Improved validation for form_type
+
+### 1.0.4
+
+- Removed src/ source folder from distributed plugin package
+
+### 1.0.3
+
+- Removed demo mode, demo API key, and webhook.site endpoint
+- Removed Source Code & Build Process section from readme.txt
+
 ### 1.0.2
 
 - Fixed broken Terms of Service and Privacy Policy URLs in External Services section
@@ -311,7 +295,6 @@ Output is written to `assets/js/bundle.js` and `assets/css/main.css`.
 - Happilee API integration with secure encrypted key storage
 - Settings page with API configuration
 - Form field mapping interface
-- Demo mode for testing
 - Real-time form data transmission
 
 ---
