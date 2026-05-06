@@ -19,6 +19,9 @@ if ( ! class_exists( 'Happfoco_Api' ) ) {
 		// Endpoint used to send form submission data
 		const API_ENDPOINT_CREATE_CONTACT = 'https://api.happilee.io/api/v1/createContact';
 
+		// Endpoint used to get templates
+		const API_ENDPOINT_GET_TEMPLATES = 'https://api.happilee.io/api/v1/getTemplateMessages';
+
 		/**
 		 * Get or create the singleton instance.
 		 *
@@ -341,6 +344,16 @@ if ( ! class_exists( 'Happfoco_Api' ) ) {
 				array(
 					'methods'             => 'GET',
 					'callback'            => array( $this, 'happfoco_fetch_form_data' ),
+					'permission_callback' => array( $this, 'check_permission' ),
+				)
+			);
+
+			register_rest_route(
+				'happfoco/v1',
+				'/fetch-template-messages',
+				array(
+					'methods'             => 'GET',
+					'callback'            => array( $this, 'happfoco_fetch_template_messages' ),
 					'permission_callback' => array( $this, 'check_permission' ),
 				)
 			);
@@ -1038,6 +1051,71 @@ if ( ! class_exists( 'Happfoco_Api' ) ) {
 					'success'   => true,
 					'form_data' => $form_data,
 					'message'   => __( 'Form data fetched successfully', 'happilee-forms-connector' ),
+				),
+				200
+			);
+		}
+
+		/**
+		 * Fetch template messages from the API.
+		 * @param WP_REST_Request $request Full request object.
+		 * @return WP_REST_Response Template messages or an error response.
+		 */
+		public function happfoco_fetch_template_messages( WP_REST_Request $request ) {
+
+			$api_key = $this->get_api_key();
+
+			if ( empty( $api_key ) ) {
+				return new WP_REST_Response(
+					array(
+						'success' => false,
+						'message' => __( 'API key not configured', 'happilee-forms-connector' ),
+					),
+					400
+				);
+			}
+
+			$response = wp_remote_get(
+				self::API_ENDPOINT_GET_TEMPLATES,
+				array(
+					'headers'   => array(
+						'x-api-key'    => $api_key,
+						'Content-Type' => 'application/json',
+						'User-Agent'   => 'Happilee-Forms-Connector/' . HAPPILEE_FORMS_VERSION . '; ' . get_bloginfo( 'url' ),
+					),
+					'timeout'   => 15,
+					'sslverify' => true,
+				)
+			);
+
+			if ( is_wp_error( $response ) ) {
+				return new WP_REST_Response(
+					array(
+						'success' => false,
+						'message' => __( 'Failed to fetch template messages', 'happilee-forms-connector' ),
+					),
+					500
+				);
+			}
+			$code = wp_remote_retrieve_response_code( $response );
+			$body = wp_remote_retrieve_body( $response );
+			$data = json_decode( $body, true );
+
+			if ( 200 !== $code ) {
+				return new WP_REST_Response(
+					array(
+						'success' => false,
+						'message' => __( 'Failed to fetch template messages', 'happilee-forms-connector' ),
+					),
+					$code
+				);
+			}
+
+			return new WP_REST_Response(
+				array(
+					'success'           => true,
+					'template_messages' => $data,
+					'message'           => __( 'Template messages fetched successfully', 'happilee-forms-connector' ),
 				),
 				200
 			);
