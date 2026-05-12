@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import WPHFC_PreviewModal from "./WP-HFC-previewModal";
 
 export const ITEMS_PER_PAGE = 10;
@@ -9,8 +9,63 @@ const WPHFC_TemplateListing = ({
   selectedTemplate,
   onSelect,
   currentPage,
+  selectedFormId,
+  formType,
 }) => {
   const [previewTemplate, setPreviewTemplate] = useState(null);
+  const selectedRowRef = useRef(null);
+  const hasAutoSelected = useRef(false);
+
+  useEffect(() => {
+    // Only run when templates are loaded and we haven't auto-selected yet
+    if (templates.length === 0 || hasAutoSelected.current) return;
+
+    const fetchTemplateSettings = async () => {
+      try {
+        const response = await fetch(
+          `${happileeConnect.rest_url}fetch-template-settings?form_id=${selectedFormId}&form_type=${formType}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "X-WP-Nonce": happileeConnect.happfoco_nonce,
+            },
+            credentials: "same-origin",
+          },
+        );
+
+        const data = await response.json();
+
+        if (response.ok && data.success && data.template_settings) {
+          const saved = data.template_settings;
+
+          // Find the full template object from the loaded templates list
+          const matchedTemplate = templates.find(
+            (t) => t.template_id === saved.template_id,
+          );
+
+          if (matchedTemplate) {
+            onSelect(matchedTemplate);
+            hasAutoSelected.current = true;
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching saved template settings:", error);
+      }
+    };
+
+    fetchTemplateSettings();
+  }, [templates]);
+
+  // Auto-scroll to selected row
+  useEffect(() => {
+    if (selectedRowRef.current) {
+      selectedRowRef.current.scrollIntoView({
+        block: "center",
+        behavior: "smooth",
+      });
+    }
+  }, [selectedTemplate]);
 
   if (isLoadingTemplates) {
     return (
@@ -65,6 +120,7 @@ const WPHFC_TemplateListing = ({
               return (
                 <tr
                   key={template.template_id}
+                  ref={isSelected ? selectedRowRef : null}
                   onClick={() => onSelect(template)}
                   className={`wphfc-border-b wphfc-border-gray-200 wphfc-cursor-pointer wphfc-transition-colors ${
                     isSelected ? "wphfc-bg-blue-100" : "hover:wphfc-bg-blue-50"
@@ -85,11 +141,10 @@ const WPHFC_TemplateListing = ({
                     <button
                       type="button"
                       onClick={(e) => {
-                        e.stopPropagation(); // prevent row select
+                        e.stopPropagation();
                         setPreviewTemplate(template);
                       }}
                       className="wphfc-flex wphfc-items-center wphfc-gap-1 wphfc-text-xs wphfc-font-medium wphfc-text-blue-600 wphfc-bg-blue-50 wphfc-border wphfc-border-blue-200 wphfc-rounded wphfc-px-2 wphfc-py-1 hover:wphfc-bg-blue-100 wphfc-cursor-pointer wphfc-transition-colors wphfc-border-none">
-                      {/* Eye Icon */}
                       <svg
                         width="13"
                         height="13"
@@ -120,7 +175,6 @@ const WPHFC_TemplateListing = ({
         </table>
       </div>
 
-      {/* Preview Modal */}
       {previewTemplate && (
         <WPHFC_PreviewModal
           template={previewTemplate}

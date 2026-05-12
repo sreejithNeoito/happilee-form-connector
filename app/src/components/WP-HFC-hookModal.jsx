@@ -33,6 +33,7 @@ const WPHFC_HookModal = ({
   const [templateSettings, setTemplateSettings] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [paramMappings, setParamMappings] = useState({});
 
   // filteredTemplates FIRST
   const filteredTemplates = templates.filter((t) => {
@@ -105,6 +106,27 @@ const WPHFC_HookModal = ({
     getFormFields(selectedFormId, formType);
   }, [selectedFormId, formType]);
 
+  // Once templates are loaded, replace partial pre-selected template with full object
+  useEffect(() => {
+    if (
+      templates.length > 0 &&
+      selectedTemplate?.template_id &&
+      !selectedTemplate?.body
+    ) {
+      const fullTemplate = templates.find(
+        (t) => t.template_id === selectedTemplate.template_id,
+      );
+      if (fullTemplate) {
+        setSelectedTemplate(fullTemplate);
+      }
+    }
+  }, [templates]);
+
+  /*
+   *    On component mount or when selectedFormId changes, we check if there are saved field mappings for this form in CurrentFields.
+   *    If there are, we parse them and convert the stored keys to display labels using fieldKeyToLabel mapping before setting them in state.
+   *    This ensures that when the user opens the modal for an already configured form, they see their previous mappings correctly.
+   */
   useEffect(() => {
     const formKey = String(selectedFormId);
     const savedFields = CurrentFields[formKey];
@@ -415,12 +437,121 @@ const WPHFC_HookModal = ({
   };
 
   /*─────────────── Save Template Settings button logic ───────────────*/
-  const handleTemplateSettingsSave = async () => {};
+  const handleTemplateSettingsSave = async () => {
+    if (!selectedTemplate) {
+      notify("Please select a template first.", "error");
+      return;
+    }
+
+    // ← Validate all template params are mapped
+    const params = selectedTemplate?.total_params || [];
+    const emptyParams = params.filter(
+      (param) => !paramMappings[param] || paramMappings[param] === "",
+    );
+
+    if (emptyParams.length > 0) {
+      notify(
+        `Please map all template parameters. Missing: ${emptyParams.map((p) => `{{${p}}}`).join(", ")}`,
+        "error",
+      );
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const response = await fetch(
+        `${happileeConnect.rest_url}save-template-settings`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-WP-Nonce": happileeConnect.happfoco_nonce,
+          },
+          body: JSON.stringify({
+            form_id: String(selectedFormId),
+            form_type: formType,
+            template_id: selectedTemplate.template_id,
+            template_name: selectedTemplate.template_name,
+            template_type: selectedTemplate.template_type || "",
+            param_mappings: paramMappings,
+          }),
+          credentials: "same-origin",
+        },
+      );
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        notify("Template settings saved successfully!", "success");
+        setTimeout(() => handleClose(true), 600);
+      } else {
+        notify(data.message || "Failed to save template settings.", "error");
+      }
+    } catch (error) {
+      notify("An error occurred while saving.", "error");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  /*─────────────── Get saved Template Settings before Template modal ───────────────*/
+  const getSavedTemplateSettings = async () => {
+    try {
+      const response = await fetch(
+        `${happileeConnect.rest_url}fetch-template-settings?form_id=${selectedFormId}&form_type=${formType}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "X-WP-Nonce": happileeConnect.happfoco_nonce,
+          },
+          credentials: "same-origin",
+        },
+      );
+      const data = await response.json();
+      if (response.ok && data.success && data.template_settings) {
+        return data.template_settings;
+      }
+      return null;
+    } catch (error) {
+      console.error("Failed to fetch template settings:", error);
+      return null;
+    }
+  };
 
   const handleNext = async () => {
     const saved = await saveBeforeNext();
     if (!saved) return;
-    await getTemplate();
+
+    // Fetch saved template settings and templates in parallel
+    const [savedSettings] = await Promise.all([
+      getSavedTemplateSettings(),
+      getTemplate(),
+    ]);
+
+    if (savedSettings) {
+      // Pre-select the saved template
+      setSelectedTemplate({
+        template_id: savedSettings.template_id,
+        template_name: savedSettings.template_name,
+        template_type: savedSettings.template_type,
+      });
+
+      // Pre-populate param mappings
+      try {
+        const parsedMappings =
+          typeof savedSettings.param_mappings === "string"
+            ? JSON.parse(savedSettings.param_mappings)
+            : savedSettings.param_mappings;
+
+        if (parsedMappings && typeof parsedMappings === "object") {
+          setParamMappings(parsedMappings); // ← pre-fills dropdowns in TemplateSettings
+        }
+      } catch (e) {
+        console.error("Failed to parse saved param_mappings:", e);
+      }
+    }
+
     setTemplateModal(true);
   };
 
@@ -506,6 +637,8 @@ const WPHFC_HookModal = ({
               selectedTemplate={selectedTemplate}
               onSelect={setSelectedTemplate}
               currentPage={currentPage}
+              selectedFormId={selectedFormId}
+              formType={formType}
             />
           )}
 
@@ -516,6 +649,8 @@ const WPHFC_HookModal = ({
               formFields={formFields}
               fieldMappings={fieldMappings}
               formType={formType}
+              savedParamMappings={paramMappings}
+              onParamMappingsChange={setParamMappings}
             />
           )}
 

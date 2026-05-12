@@ -1,14 +1,21 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 const WPHFC_TemplateSettings = ({
   selectedTemplate,
   formFields,
-  fieldMappings,
   formType,
+  savedParamMappings,
+  onParamMappingsChange,
 }) => {
   const params = selectedTemplate?.total_params || [];
-  const [paramMappings, setParamMappings] = useState({});
+  const [paramMappings, setParamMappings] = useState(savedParamMappings || {});
   const [openDropdown, setOpenDropdown] = useState(null);
+
+  useEffect(() => {
+    if (savedParamMappings && Object.keys(savedParamMappings).length > 0) {
+      setParamMappings(savedParamMappings);
+    }
+  }, [savedParamMappings]);
 
   const handleMap = (param, formField) => {
     let fieldValue = null;
@@ -30,11 +37,14 @@ const WPHFC_TemplateSettings = ({
           fieldValue = formField.name || formField.id;
       }
     }
-    setParamMappings((prev) => ({ ...prev, [param]: fieldValue }));
+
+    const newMappings = { ...paramMappings, [param]: fieldValue };
+
+    setParamMappings(newMappings);
+    onParamMappingsChange?.(newMappings);
     setOpenDropdown(null);
   };
 
-  // Replace {{param}} with mapped label or keep as placeholder
   const getLivePreview = () => {
     let body = selectedTemplate?.body || "";
     params.forEach((param) => {
