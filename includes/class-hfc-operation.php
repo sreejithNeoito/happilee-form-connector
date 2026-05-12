@@ -203,10 +203,11 @@ if (!class_exists('Happfoco_Operation')) {
 			$config = wp_cache_get($cache_key, $cache_group);
 
 			if (false === $config) {
-				$table = $wpdb->prefix . 'happfoco_template_data';
+				$table = esc_sql($wpdb->prefix . 'happfoco_template_data');
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 				$config = $wpdb->get_row(
 					$wpdb->prepare(
+						// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 						"SELECT template_id, param_mappings FROM {$table} WHERE form_id = %s AND form_type = %s LIMIT 1",
 						(string) $form_id,
 						$form_type

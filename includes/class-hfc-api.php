@@ -1137,12 +1137,13 @@ if (!class_exists('Happfoco_Api')) {
 			}
 
 			$param_mappings_json = wp_json_encode($sanitized_mappings);
-			$table = $wpdb->prefix . 'happfoco_template_data';
+			$table = esc_sql($wpdb->prefix . 'happfoco_template_data');
 
 			// Check if a row already exists for this form
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$existing = $wpdb->get_row(
 				$wpdb->prepare(
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 					"SELECT id FROM {$table} WHERE form_id = %s AND form_type = %s",
 					$form_id,
 					$form_type
@@ -1341,12 +1342,13 @@ if (!class_exists('Happfoco_Api')) {
 
 			$form_id = sanitize_text_field($request->get_param('form_id'));
 			$form_type = sanitize_text_field($request->get_param('form_type'));
-			$table = $wpdb->prefix . 'happfoco_template_data';
+			$table = esc_sql($wpdb->prefix . 'happfoco_template_data');
 
 			if (!empty($form_id) && !empty($form_type)) {
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 				$template_settings = $wpdb->get_row(
 					$wpdb->prepare(
+						// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 						"SELECT * FROM {$table} WHERE form_id = %s AND form_type = %s",
 						$form_id,
 						$form_type
@@ -1356,6 +1358,7 @@ if (!class_exists('Happfoco_Api')) {
 			} else {
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 				$template_settings = $wpdb->get_results(
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 					"SELECT * FROM {$table}",
 					ARRAY_A
 				);
