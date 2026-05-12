@@ -120,7 +120,8 @@ input:checked + .wphfc-slider:before {
   background: none;
 }
 .wphfc-cancel-modal,
-.wphfc-save-modal {
+.wphfc-save-modal,
+.wphfc-next-modal {
   cursor: pointer;
 }
 .wphfc-modal-select {
@@ -161,4 +162,25 @@ input:checked + .wphfc-slider:before {
 }
 .wphfc-field-mapping {
   border-top: 1px solid #d1d5db;
+}
+
+/* ----------------- Next button ----------------- */
+
+@keyframes slideArrow {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  50% {
+    transform: translateX(5px);
+    opacity: 0.5;
+  }
+}
+
+.wphfc-next-modal:hover {
+  background-color: #3b82f6;
+  box-shadow:
+    0 0 8px rgba(59, 130, 246, 0.5),
+    0 0 16px rgba(59, 130, 246, 0.25);
 }

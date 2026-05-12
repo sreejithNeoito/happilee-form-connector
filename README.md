@@ -5,8 +5,8 @@
 ![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-blue?logo=wordpress)
 ![PHP](https://img.shields.io/badge/PHP-7.4%2B-777BB4?logo=php)
 ![License](https://img.shields.io/badge/License-GPLv2%2B-green)
-![Version](https://img.shields.io/badge/Version-1.0.6-orange)
-![Tested up to](https://img.shields.io/badge/Tested%20up%20to-WordPress%206.7-blue)
+![Version](https://img.shields.io/badge/Version-1.0.7-orange)
+![Tested up to](https://img.shields.io/badge/Tested%20up%20to-WordPress%206.9-blue)
 
 ---
 
@@ -53,6 +53,7 @@ Happilee Forms Connector seamlessly integrates your WordPress contact forms with
 - Real-time data transmission on every form submission
 - Simple settings page with field mapping interface
 - Automatic country calling code detection via IP lookup
+- WhatsApp template message support with dynamic parameter mapping
 
 ---
 
@@ -115,6 +116,8 @@ Payload is sent to Happilee createContact API endpoint
          ↓
 Contact is created / updated in Happilee dashboard
          ↓
+If a WhatsApp template is configured, template message is sent
+         ↓
 WhatsApp automation workflow is triggered
 ```
 
@@ -140,10 +143,12 @@ This plugin makes HTTP requests to the following third-party services.
 
 Used for API key validation and forwarding form submissions.
 
-| Endpoint                                              | Purpose                       |
-| ----------------------------------------------------- | ----------------------------- |
-| `https://devapi.happilee.io/api/v1/getProjectDetails` | Validates your API key        |
-| `https://devapi.happilee.io/api/v1/createContact`     | Forwards form submission data |
+| Endpoint                                              | Purpose                                               |
+| ----------------------------------------------------- | ----------------------------------------------------- |
+| `https://api.happilee.io/api/v1/getProjectDetails`    | Validates your API key                                |
+| `https://api.happilee.io/api/v1/createContact`        | Forwards form submission data                         |
+| `https://api.happilee.io/api/v1/getTemplateMessages`  | Fetching available WhatsApp templates                 |
+| `https://api.happilee.io/api/v1/sendMessage`          | sending WhatsApp template messages on form submission |
 
 Data transmitted includes your API key, form field values, form metadata, page URL, submission timestamp, and user IP/agent.
 
@@ -178,44 +183,31 @@ When no country calling code is mapped to a form field, the plugin sends the vis
 
 ## Developer Reference
 
-### Filter Hooks
-
-| Filter                                 | Description                                           |
-| -------------------------------------- | ----------------------------------------------------- |
-| `happfoco_api_validate_endpoint`       | Override the live Happilee validation endpoint URL    |
-| `happfoco_api_create_contact_endpoint` | Override the live Happilee createContact endpoint URL |
-
-**Example:**
-
-```php
-// Override the live Happilee validation endpoint
-add_filter( 'happfoco_api_validate_endpoint', function( $endpoint ) {
-    return 'https://your-custom-endpoint.com/validate';
-} );
-```
-
 ### REST API Endpoints
 
 All endpoints are under the `happfoco/v1` namespace and require `manage_options` capability.
 
-| Method | Route                 | Description                                |
-| ------ | --------------------- | ------------------------------------------ |
-| `POST` | `/save-api-config`    | Save and validate API key                  |
-| `GET`  | `/get-api-config`     | Retrieve current API configuration         |
-| `GET`  | `/fetch-forms`        | List all forms from supported plugins      |
-| `POST` | `/fetch-form-fields`  | Get fields for a specific form             |
-| `POST` | `/save-form-settings` | Save form enable/disable and field mapping |
-| `GET`  | `/fetch-form-data`    | Retrieve all stored form configurations    |
+| Method | Route                      | Description                                     |
+| ------ | -------------------------- | ----------------------------------------------- |
+| `POST` | `/save-api-config`         | Save and validate API key                       |
+| `GET`  | `/get-api-config`          | Retrieve current API configuration              |
+| `GET`  | `/fetch-forms`             | List all forms from supported plugins           |
+| `POST` | `/fetch-form-fields`       | Get fields for a specific form                  |
+| `POST` | `/save-form-settings`      | Save form enable/disable and field mapping      |
+| `GET`  | `/fetch-form-data`         | Retrieve all stored form configurations         |
+| `GET`  | `/fetch-template-messages` | Fetch available WhatsApp templates              |
+| `GET`  | `/fetch-template-settings` | Fetch template enable/disable and field mapping |
+| `POST` | `/save-template-settings`  | Save template enable/disable and field mapping  |
 
 ### Database
 
-The plugin creates one custom table on activation:
+The plugin creates two custom tables on activation:
 
 **`wp_happfoco_forms_data`**
 
 | Column             | Type           | Description                                                |
 | ------------------ | -------------- | ---------------------------------------------------------- |
-| `id`               | `mediumint(9)` | Primary key                                                |
+| `id`               | `mediumint(9)` | Primary key (auto-increment)                               |
 | `form_id`          | `varchar(100)` | Form identifier from the form plugin                       |
 | `form_name`        | `varchar(255)` | Human-readable form title                                  |
 | `form_type`        | `varchar(100)` | Plugin type: `cf7`, `wpforms`, `ninja_forms`, `forminator` |
@@ -223,6 +215,22 @@ The plugin creates one custom table on activation:
 | `active_hook`      | `varchar(255)` | WordPress action hook used to capture submissions          |
 | `connected_fields` | `longtext`     | JSON field mapping (form field → Happilee field)           |
 | `created_at`       | `datetime`     | Record creation timestamp                                  |
+
+**`wp_happfoco_template_data`**
+
+| Column           | Type           | Description                                                           |
+| ---------------- | -------------- | --------------------------------------------------------------------- |
+| `id`             | `mediumint(9)` | Primary key (auto-increment)                                          |
+| `form_id`        | `varchar(100)` | Associated form identifier from the form plugin                       |
+| `form_type`      | `varchar(100)` | Associated form plugin: `cf7`, `wpforms`, `ninja_forms`, `forminator` |
+| `template_id`    | `varchar(100)` | WhatsApp template identifier                                          |
+| `template_name`  | `varchar(255)` | Human-readable WhatsApp template name                                 |
+| `template_type`  | `varchar(100)` | WhatsApp template category/type                                       |
+| `param_mappings` | `longtext`     | JSON mapping of template parameters to form fields                    |
+| `created_at`     | `datetime`     | Record creation timestamp                                             |
+| `updated_at`     | `datetime`     | Record last-updated timestamp                                         |
+
+> **Unique key**: `form_template_unique (form_id, form_type)` — one template mapping per form.
 
 All plugin data is removed cleanly on uninstall.
 
@@ -255,6 +263,16 @@ Output is written to `assets/js/bundle.js` and `assets/css/main.css`.
 
 ## Changelog
 
+### 1.0.7
+
+- Added WhatsApp template message sending on form submission
+- Added template selection interface with search and pagination
+- Added template parameter mapping to form fields
+- Added live WhatsApp-style message preview in template settings
+- Added support for templates with no dynamic parameters
+- Added deduplication guard across all supported form plugins
+- Improved param mapping to use original form field names for accurate value resolution
+
 ### 1.0.6
 
 - Removed README.md from distributed plugin package
@@ -286,7 +304,7 @@ Output is written to `assets/js/bundle.js` and `assets/css/main.css`.
 - Added External Services disclosure section
 - Corrected database option cleanup on uninstall (encryption key and db version options now removed)
 - Removed development source files from distributed zip
-- Updated tested up to WordPress 6.7
+- Updated tested up to WordPress 6.9
 
 ### 1.0.0
 

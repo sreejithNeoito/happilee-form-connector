@@ -6,7 +6,7 @@ Donate link: https://happilee.io/pricing
 Tags: happilee, whatsapp, chatbot, contact form, api integration
 Requires at least: 5.0
 Tested up to: 6.9
-Stable tag: 1.0.6
+Stable tag: 1.0.7
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -32,6 +32,7 @@ Happilee Forms Connector seamlessly integrates your WordPress contact forms with
 * Secure API authentication with encrypted storage
 * Real-time data transmission
 * Simple configuration interface
+* WhatsApp template message support with dynamic parameter mapping
 
 **About Happilee:**
 
@@ -41,8 +42,10 @@ Happilee is a Meta Business Partner providing WhatsApp chatbot services that hel
 
 1. Install and activate the plugin
 2. Configure your Happilee API credentials
-3. Select which forms to connect
-4. Form submissions automatically sync to your Happilee WhatsApp chatbot
+3. Select which forms to connect and map the contact fields
+4. Choose a WhatsApp message template from your Happilee account
+5. Map the template's dynamic parameters (e.g. {{customer_name}}) to your form fields
+6. Form submissions automatically sync to Happilee and trigger the selected WhatsApp template message
 
 == Installation ==
 
@@ -96,6 +99,18 @@ The plugin sends selected form fields such as First Name, Last Name, Country Cod
 
 After configuring your API key and connecting a form, submit a test form. You should see the submission data in your Happilee dashboard.
 
+= Can I send WhatsApp template messages when a form is submitted? =
+
+Yes. After connecting a form, you can select a WhatsApp message template from your Happilee account and map its dynamic parameters (such as {{customer_name}} or {{order_id}}) to the corresponding form fields. When the form is submitted, the plugin automatically sends the template message to the contact's phone number with the mapped values filled in.
+
+= What are template parameters? =
+
+Template parameters are dynamic placeholders in your WhatsApp message template, written as {{param_name}}. For example, a delivery template might contain {{pickup_time}} and {{customer_address}}. The plugin lets you map each placeholder to a specific form field so the correct submitted value is inserted when the message is sent.
+
+= What happens if a template has no parameters? =
+
+Templates without dynamic parameters are fully supported. The plugin will send the template message as-is without requiring any field mapping.
+
 == External Services ==
 
 This plugin connects to the following external services:
@@ -106,12 +121,16 @@ This plugin communicates with the Happilee WhatsApp chatbot platform API to:
 
 * Validate your API key and retrieve your project details — sent once when you save your API credentials in the settings page.
 * Forward form submission data — sent every time a visitor submits a connected WordPress form.
+* Fetch available WhatsApp templates — sent once when you configure a form connection.
+* Send WhatsApp template messages — sent every time a connected form is submitted with a template selected.
 
 Data sent to Happilee includes: your API key (for authentication) and submitted form field values (e.g., First Name, Last Name, Mobile, Country Code, Birthday, and Tags).
 
 Data is transmitted to the following Happilee API endpoints:
 * `https://api.happilee.io/api/v1/getProjectDetails` — API key validation
 * `https://api.happilee.io/api/v1/createContact` — form submission forwarding
+* `https://api.happilee.io/api/v1/getTemplateMessages` — fetching available WhatsApp templates
+* `https://api.happilee.io/api/v1/sendMessage` — sending WhatsApp template messages on form submission
 
 This service is provided by Happilee (a Meta Business Partner):
 * Website: https://happilee.io
@@ -139,12 +158,23 @@ This service is provided by ipapi.co:
 == Screenshots ==
 
 1. Plugin settings page with API configuration
-2. Form selection and field mapping interface
-3. Successful API connection status
+2. List of available forms
+3. Hook selection and field-mapping interface
 4. Integration with Contact Form 7
-5. Connected forms management
+5. Template listing from the Happilee Dashboard
+6. Template preview
+7. Template field mapping with preview
 
 == Changelog ==
+
+= 1.0.7 =
+* Added WhatsApp template message sending on form submission
+* Added template selection interface with search and pagination
+* Added template parameter mapping to form fields
+* Added live WhatsApp-style message preview in template settings
+* Added support for templates with no dynamic parameters
+* Added deduplication guard across all supported form plugins
+* Improved param mapping to use original form field names for accurate value resolution
 
 = 1.0.6 =
 * Removed README.md from distributed plugin package
