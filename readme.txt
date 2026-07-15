@@ -5,8 +5,8 @@ Author URI: https://neoito.com
 Donate link: https://happilee.io/pricing
 Tags: happilee, whatsapp, chatbot, contact form, api integration
 Requires at least: 5.0
-Tested up to: 6.9
-Stable tag: 1.0.7
+Tested up to: 7.0
+Stable tag: 1.0.8
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -167,52 +167,49 @@ This service is provided by ipapi.co:
 
 == Changelog ==
 
+= 1.0.8 =
+* Changed: Tested up to WordPress 7.0.1
+
 = 1.0.7 =
-* Added WhatsApp template message sending on form submission
-* Added template selection interface with search and pagination
-* Added template parameter mapping to form fields
-* Added live WhatsApp-style message preview in template settings
-* Added support for templates with no dynamic parameters
-* Added deduplication guard across all supported form plugins
-* Improved param mapping to use original form field names for accurate value resolution
+* Added: WhatsApp template message sending on form submission
+* Added: Template selection interface with search and pagination
+* Added: Template parameter mapping to form fields
+* Added: Live WhatsApp-style message preview in template settings
+* Fixed: Duplicate API calls when multiple hooks were active for the same form
+* Improved: Parameter mapping now uses original form field names for accurate value resolution
 
 = 1.0.6 =
-* Removed README.md from distributed plugin package
+* Changed: General package cleanup
 
 = 1.0.5 =
-* Fixed issue with form_id type mismatch
-* Improved validation for form_type
+* Fixed: Form ID type mismatch
+* Improved: Validation for form type
 
 = 1.0.4 =
-* Removed src/ source folder from distributed plugin package
+* Changed: General package cleanup
 
 = 1.0.3 =
-* Removed demo mode, demo API key, and webhook.site endpoint
-* Updated readme.txt to remove all demo references and webhook.site External Service disclosure
+* Removed: Demo mode and associated test endpoint
+* Changed: Updated documentation
 
 = 1.0.2 =
-* Fixed broken Terms of Service and Privacy Policy URLs in External Services section
-* Added automatic database table creation on plugins_loaded to prevent missing table errors after migration or manual updates
+* Fixed: Broken Terms of Service and Privacy Policy URLs in External Services section
 
 = 1.0.1 =
-* Added REST API parameter validation with sanitize_callback and validate_callback for all endpoints
-* Fixed missing wp_unslash() on $_POST access in Forminator submission handler
-* Fixed redundant double-sanitization of form field values
-* Added External Services disclosure section
-* Corrected database option cleanup on uninstall (encryption key and db version options now removed)
-* Removed development source files from distributed zip
-* Updated Tested up to: 6.9
+* Added: REST API parameter validation and sanitization for all endpoints
+* Fixed: Missing input sanitization in the Forminator submission handler
+* Fixed: Redundant double-sanitization of form field values
+* Added: External Services disclosure section
+* Fixed: Incomplete cleanup of plugin options on uninstall
+* Changed: Tested up to WordPress 6.9
 
 = 1.0.0 =
 * Initial release
-* Support for Contact Form 7
-* Support for WPForms
-* Support for Ninja Forms
-* Support for Forminator
-* Happilee API integration with secure encrypted storage
-* Settings page for API configuration
-* Form field mapping interface
-* Real-time form data transmission
+* Added: Support for Contact Form 7, WPForms, Ninja Forms, and Forminator
+* Added: Happilee API integration with secure encrypted storage
+* Added: Settings page for API configuration
+* Added: Form field mapping interface
+* Added: Real-time form data transmission
 
 == Upgrade Notice ==
 

@@ -5,7 +5,7 @@
 ![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-blue?logo=wordpress)
 ![PHP](https://img.shields.io/badge/PHP-7.4%2B-777BB4?logo=php)
 ![License](https://img.shields.io/badge/License-GPLv2%2B-green)
-![Version](https://img.shields.io/badge/Version-1.0.7-orange)
+![Version](https://img.shields.io/badge/Version-1.0.8-orange)
 ![Tested up to](https://img.shields.io/badge/Tested%20up%20to-WordPress%206.9-blue)
 
 ---
@@ -143,12 +143,12 @@ This plugin makes HTTP requests to the following third-party services.
 
 Used for API key validation and forwarding form submissions.
 
-| Endpoint                                              | Purpose                                               |
-| ----------------------------------------------------- | ----------------------------------------------------- |
-| `https://api.happilee.io/api/v1/getProjectDetails`    | Validates your API key                                |
-| `https://api.happilee.io/api/v1/createContact`        | Forwards form submission data                         |
-| `https://api.happilee.io/api/v1/getTemplateMessages`  | Fetching available WhatsApp templates                 |
-| `https://api.happilee.io/api/v1/sendMessage`          | sending WhatsApp template messages on form submission |
+| Endpoint                                             | Purpose                                               |
+| ---------------------------------------------------- | ----------------------------------------------------- |
+| `https://api.happilee.io/api/v1/getProjectDetails`   | Validates your API key                                |
+| `https://api.happilee.io/api/v1/createContact`       | Forwards form submission data                         |
+| `https://api.happilee.io/api/v1/getTemplateMessages` | Fetching available WhatsApp templates                 |
+| `https://api.happilee.io/api/v1/sendMessage`         | sending WhatsApp template messages on form submission |
 
 Data transmitted includes your API key, form field values, form metadata, page URL, submission timestamp, and user IP/agent.
 
@@ -263,57 +263,58 @@ Output is written to `assets/js/bundle.js` and `assets/css/main.css`.
 
 ## Changelog
 
+### 1.0.8
+
+- Changed: Tested up to WordPress 7.0.1
+
 ### 1.0.7
 
-- Added WhatsApp template message sending on form submission
-- Added template selection interface with search and pagination
-- Added template parameter mapping to form fields
-- Added live WhatsApp-style message preview in template settings
-- Added support for templates with no dynamic parameters
-- Added deduplication guard across all supported form plugins
-- Improved param mapping to use original form field names for accurate value resolution
+- Added: WhatsApp template message sending on form submission
+- Added: Template selection interface with search and pagination
+- Added: Template parameter mapping to form fields
+- Added: Live WhatsApp-style message preview in template settings
+- Fixed: Duplicate API calls when multiple hooks were active for the same form
+- Improved: Parameter mapping now uses original form field names for accurate value resolution
 
 ### 1.0.6
 
-- Removed README.md from distributed plugin package
+- Changed: General package cleanup
 
 ### 1.0.5
 
-- Fixed issue with form_id type mismatch
-- Improved validation for form_type
+- Fixed: Form ID type mismatch
+- Improved: Validation for form type
 
 ### 1.0.4
 
-- Removed src/ source folder from distributed plugin package
+- Changed: General package cleanup
 
 ### 1.0.3
 
-- Removed demo mode, demo API key, and webhook.site endpoint
-- Removed Source Code & Build Process section from readme.txt
+- Removed: Demo mode and associated test endpoint
+- Changed: Updated documentation
 
 ### 1.0.2
 
-- Fixed broken Terms of Service and Privacy Policy URLs in External Services section
-- Added automatic database table creation on `plugins_loaded` to prevent missing table errors after migration or manual updates
+- Fixed: Broken Terms of Service and Privacy Policy URLs in External Services section
 
 ### 1.0.1
 
-- Added REST API parameter validation with `sanitize_callback` and `validate_callback` for all endpoints
-- Fixed missing `wp_unslash()` on `$_POST` access in Forminator submission handler
-- Fixed redundant double-sanitization of form field values
-- Added External Services disclosure section
-- Corrected database option cleanup on uninstall (encryption key and db version options now removed)
-- Removed development source files from distributed zip
-- Updated tested up to WordPress 6.9
+- Added: REST API parameter validation and sanitization for all endpoints
+- Fixed: Missing input sanitization in the Forminator submission handler
+- Fixed: Redundant double-sanitization of form field values
+- Added: External Services disclosure section
+- Fixed: Incomplete cleanup of plugin options on uninstall
+- Changed: Tested up to WordPress 6.9
 
 ### 1.0.0
 
 - Initial release
-- Support for Contact Form 7, WPForms, Ninja Forms, and Forminator
-- Happilee API integration with secure encrypted key storage
-- Settings page with API configuration
-- Form field mapping interface
-- Real-time form data transmission
+- Added: Support for Contact Form 7, WPForms, Ninja Forms, and Forminator
+- Added: Happilee API integration with secure encrypted storage
+- Added: Settings page for API configuration
+- Added: Form field mapping interface
+- Added: Real-time form data transmission
 
 ---
 
