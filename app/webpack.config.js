@@ -9,11 +9,9 @@ module.exports = {
     filename: "bundle.js",
     path: path.resolve(__dirname, "../assets/js"),
     publicPath: "/wp-content/plugins/happilee-forms-connect/assets/js",
-    hotUpdateChunkFilename: ".hot/[id].[fullhash].hot-update.js",
-    hotUpdateMainFilename: ".hot/[runtime].[fullhash].hot-update.json",
   },
   devServer: {
-    hot: true,
+    hot: false,
     liveReload: true,
     port: 3000,
     devMiddleware: {
