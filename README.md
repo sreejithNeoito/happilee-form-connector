@@ -5,8 +5,8 @@
 ![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-blue?logo=wordpress)
 ![PHP](https://img.shields.io/badge/PHP-7.4%2B-777BB4?logo=php)
 ![License](https://img.shields.io/badge/License-GPLv2%2B-green)
-![Version](https://img.shields.io/badge/Version-1.0.8-orange)
-![Tested up to](https://img.shields.io/badge/Tested%20up%20to-WordPress%206.9-blue)
+![Version](https://img.shields.io/badge/Version-1.0.9-orange)
+![Tested up to](https://img.shields.io/badge/Tested%20up%20to-WordPress%207.1-blue)
 
 ---
 
@@ -262,6 +262,11 @@ Output is written to `assets/js/bundle.js` and `assets/css/main.css`.
 ---
 
 ## Changelog
+
+### 1.0.9
+
+- Changed: Tested up to WordPress 7.1
+- Changed: Tags field mapping is now a free-text input (comma-separated) instead of a dropdown tied to a submitted form field
 
 ### 1.0.8
 

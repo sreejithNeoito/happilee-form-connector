@@ -216,7 +216,7 @@ const WPHFC_HookModal = ({
         setFormFields(data.fields);
       }
     } catch (error) {
-      console.log(error);
+      console.error("Error fetching form fields:", error);
     }
   };
 
@@ -734,83 +734,119 @@ const WPHFC_HookModal = ({
                 Happilee Field Mapping
               </h3>
               <div className="wphfc-space-y-3">
-                {getAvilableFields.map((field) => (
-                  <div
-                    key={field}
-                    className="wphfc-field-map-row wphfc-flex wphfc-items-center wphfc-gap-3">
-                    <label className="wphfc-text-sm wphfc-font-medium wphfc-text-gray-700 wphfc-w-32 wphfc-flex-shrink-0">
-                      {field}
-                    </label>
-                    <div
-                      className="wphfc-field-dropdown-container wphfc-flex-1 wphfc-relative"
-                      ref={(el) => (fieldDropdownRefs.current[field] = el)}>
-                      <button
-                        type="button"
-                        className="wphfc-select wphfc-flex wphfc-justify-between wphfc-items-center wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-bg-white wphfc-border wphfc-border-gray-300 wphfc-rounded-md wphfc-text-left wphfc-text-sm wphfc-text-gray-700 hover:wphfc-border-gray-400 focus:wphfc-outline-none focus:wphfc-ring-2 focus:wphfc-ring-blue-500 wphfc-cursor-pointer"
-                        onClick={() => toggleDropdown(field)}>
-                        <span
-                          className={
-                            fieldMappings[field]
-                              ? "wphfc-text-gray-900"
-                              : "wphfc-text-gray-500"
-                          }>
-                          {getMappedFieldLabel(field)}
-                        </span>
-                        <svg
-                          width="20"
-                          height="20"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                          className={`wphfc-transition-transform ${openDropdown === field ? "wphfc-rotate-180" : ""}`}>
-                          <path
-                            d="M6 9L12 15L18 9"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                {getAvilableFields.map((field) => {
+                  if (field === "Tags") {
+                    return (
+                      <div
+                        key={field}
+                        className="wphfc-field-map-row wphfc-flex wphfc-items-center wphfc-gap-3">
+                        <label className="wphfc-text-sm wphfc-font-medium wphfc-text-gray-700 wphfc-w-32 wphfc-flex-shrink-0">
+                          {field}
+                        </label>
+                        <div className="wphfc-flex-1">
+                          <input
+                            type="text"
+                            className="wphfc-select wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-bg-white wphfc-border wphfc-border-gray-300 wphfc-text-sm wphfc-text-gray-700"
+                            style={{
+                              borderRadius: "6px",
+                              outline: "none",
+                              boxShadow: "none",
+                            }}
+                            placeholder="Enter tags (comma separated)"
+                            value={fieldMappings[field] || ""}
+                            onChange={(e) =>
+                              setFieldMappings((prev) => ({
+                                ...prev,
+                                [field]: e.target.value,
+                              }))
+                            }
                           />
-                        </svg>
-                      </button>
-                      {openDropdown === field && (
-                        <div className="wphfc-dropdown-menu wphfc-absolute wphfc-z-10 wphfc-w-full wphfc-mt-1 wphfc-bg-white wphfc-border wphfc-border-gray-300 wphfc-rounded-md wphfc-shadow-xl wphfc-max-h-60 wphfc-overflow-y-auto">
-                          <ul className="wphfc-py-1">
-                            <li>
-                              <button
-                                type="button"
-                                className="wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-text-left wphfc-text-sm wphfc-text-gray-500 hover:wphfc-bg-gray-100 wphfc-cursor-pointer wphfc-border-none wphfc-bg-transparent"
-                                onClick={() => handleFieldMapping(field, null)}>
-                                -- None --
-                              </button>
-                            </li>
-                            {formFields.length > 0 ? (
-                              formFields.map((formField) => (
-                                <li key={formField.id || formField.name}>
-                                  <button
-                                    type="button"
-                                    className={`wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-text-left wphfc-text-sm hover:wphfc-bg-blue-50 wphfc-cursor-pointer wphfc-border-none wphfc-bg-transparent ${
-                                      isFieldSelected(field, formField)
-                                        ? "wphfc-bg-blue-100 wphfc-text-[#0B3966] wphfc-font-medium"
-                                        : "wphfc-text-gray-700"
-                                    }`}
-                                    onClick={() =>
-                                      handleFieldMapping(field, formField)
-                                    }>
-                                    {formField.label || formField.name}
-                                  </button>
-                                </li>
-                              ))
-                            ) : (
-                              <li className="wphfc-px-3 wphfc-py-2 wphfc-text-sm wphfc-text-gray-500 wphfc-italic">
-                                No fields available
-                              </li>
-                            )}
-                          </ul>
                         </div>
-                      )}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div
+                      key={field}
+                      className="wphfc-field-map-row wphfc-flex wphfc-items-center wphfc-gap-3">
+                      <label className="wphfc-text-sm wphfc-font-medium wphfc-text-gray-700 wphfc-w-32 wphfc-flex-shrink-0">
+                        {field}
+                      </label>
+                      <div
+                        className="wphfc-field-dropdown-container wphfc-flex-1 wphfc-relative"
+                        ref={(el) => (fieldDropdownRefs.current[field] = el)}>
+                        <button
+                          type="button"
+                          className="wphfc-select wphfc-flex wphfc-justify-between wphfc-items-center wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-bg-white wphfc-border wphfc-border-gray-300 wphfc-rounded-md wphfc-text-left wphfc-text-sm wphfc-text-gray-700 hover:wphfc-border-gray-400 focus:wphfc-outline-none focus:wphfc-ring-2 focus:wphfc-ring-blue-500 wphfc-cursor-pointer"
+                          onClick={() => toggleDropdown(field)}>
+                          <span
+                            className={
+                              fieldMappings[field]
+                                ? "wphfc-text-gray-900"
+                                : "wphfc-text-gray-500"
+                            }>
+                            {getMappedFieldLabel(field)}
+                          </span>
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            className={`wphfc-transition-transform ${openDropdown === field ? "wphfc-rotate-180" : ""}`}>
+                            <path
+                              d="M6 9L12 15L18 9"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
+                        {openDropdown === field && (
+                          <div className="wphfc-dropdown-menu wphfc-absolute wphfc-z-10 wphfc-w-full wphfc-mt-1 wphfc-bg-white wphfc-border wphfc-border-gray-300 wphfc-rounded-md wphfc-shadow-xl wphfc-max-h-60 wphfc-overflow-y-auto">
+                            <ul className="wphfc-py-1">
+                              <li>
+                                <button
+                                  type="button"
+                                  className="wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-text-left wphfc-text-sm wphfc-text-gray-500 hover:wphfc-bg-gray-100 wphfc-cursor-pointer wphfc-border-none wphfc-bg-transparent"
+                                  onClick={() =>
+                                    handleFieldMapping(field, null)
+                                  }>
+                                  -- None --
+                                </button>
+                              </li>
+                              {formFields.length > 0 ? (
+                                formFields.map((formField) => {
+                                  return (
+                                    <li key={formField.id || formField.name}>
+                                      <button
+                                        type="button"
+                                        className={`wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-text-left wphfc-text-sm hover:wphfc-bg-blue-50 wphfc-cursor-pointer wphfc-border-none wphfc-bg-transparent ${
+                                          isFieldSelected(field, formField)
+                                            ? "wphfc-bg-blue-100 wphfc-text-[#0B3966] wphfc-font-medium"
+                                            : "wphfc-text-gray-700"
+                                        }`}
+                                        onClick={() =>
+                                          handleFieldMapping(field, formField)
+                                        }>
+                                        {formField.label || formField.name}
+                                      </button>
+                                    </li>
+                                  );
+                                })
+                              ) : (
+                                <li className="wphfc-px-3 wphfc-py-2 wphfc-text-sm wphfc-text-gray-500 wphfc-italic">
+                                  No fields available
+                                </li>
+                              )}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
