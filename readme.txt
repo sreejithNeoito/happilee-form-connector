@@ -5,8 +5,8 @@ Author URI: https://neoito.com
 Donate link: https://happilee.io/pricing
 Tags: happilee, whatsapp, chatbot, contact form, api integration
 Requires at least: 5.0
-Tested up to: 7.0
-Stable tag: 1.0.8
+Tested up to: 7.1
+Stable tag: 1.0.9
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -166,6 +166,10 @@ This service is provided by ipapi.co:
 7. Template field mapping with preview
 
 == Changelog ==
+
+= 1.0.9 =
+* Changed: Tested up to WordPress 7.1
+* Changed: Tags field mapping is now a free-text input (comma-separated) instead of a dropdown tied to a submitted form field
 
 = 1.0.8 =
 * Changed: Tested up to WordPress 7.0.1
