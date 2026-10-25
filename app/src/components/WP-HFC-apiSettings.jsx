@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 
 const WPHFC_ApiConfiguration = () => {
   const [apiKey, setApiKey] = useState("");
+  // Masked key from the server; the real key is never sent to the browser
+  const [maskedKey, setMaskedKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -10,7 +12,6 @@ const WPHFC_ApiConfiguration = () => {
     fetchSettings();
   }, []);
 
-  // Fetch existing settings
   const fetchSettings = async () => {
     try {
       const response = await fetch(
@@ -28,16 +29,22 @@ const WPHFC_ApiConfiguration = () => {
       if (response.ok) {
         const data = await response.json();
         setApiKey(data.apiKey || "");
+        setMaskedKey(data.apiKey || "");
       }
     } catch (error) {
       console.error("Error fetching settings:", error);
     }
   };
 
-  // Save settings
   const saveSettings = () => {
     if (!apiKey.trim()) {
       setMessage("⚠️ Please fill in all fields");
+      return;
+    }
+
+    // A masked key (even partly edited) is not a real key
+    if (maskedKey && apiKey.includes("*")) {
+      setMessage("⚠️ Enter a new API key to replace the saved one");
       return;
     }
 
@@ -50,16 +57,15 @@ const WPHFC_ApiConfiguration = () => {
         "Content-Type": "application/json",
         "X-WP-Nonce": happileeConnect.happfoco_nonce,
       },
-      body: JSON.stringify({
-        // apiEndpoint,
-        apiKey,
-      }),
+      body: JSON.stringify({ apiKey }),
       credentials: "same-origin",
     })
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || "Error saving settings");
         setMessage("✅ Settings saved successfully!");
+        // Replace the plain-text key in the field with the masked version
+        fetchSettings();
 
         setTimeout(() => setMessage(""), 3000);
       })
@@ -92,7 +98,6 @@ const WPHFC_ApiConfiguration = () => {
           </div>
         )}
 
-        {/* API Key Field */}
         <div className="wphfc-mb-6">
           <label
             htmlFor="api-key"
@@ -162,7 +167,6 @@ const WPHFC_ApiConfiguration = () => {
           </p>
         </div>
 
-        {/* Buttons */}
         <div className="wphfc-flex wphfc-gap-4 wphfc-mb-0">
           <button
             type="button"

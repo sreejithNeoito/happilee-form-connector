@@ -1,36 +1,62 @@
 <?php
+/**
+ * Form submission handling.
+ *
+ * @package Happilee_Forms_Connector
+ */
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
 if ( ! class_exists( 'Happfoco_Operation' ) ) {
 
+	/**
+	 * Listens to supported form plugins and forwards submissions to Happilee.
+	 */
 	class Happfoco_Operation {
 
+		/**
+		 * Form settings table name.
+		 *
+		 * @var string
+		 */
 		private $table_name;
-		private $form_configurations        = array();
-		private $processed_form_submissions = array();
 
 		/**
-		 * Constructor — sets up table name and registers the init hook.
+		 * Per-request cache of form configurations.
+		 *
+		 * @var array
+		 */
+		private $form_configurations = array();
+
+		/**
+		 * Per-request cache of the visitor's country calling code.
+		 *
+		 * @var string|null
+		 */
+		private $country_code = null;
+
+		/**
+		 * Set the table name and register the init hook.
 		 */
 		public function __construct() {
 			global $wpdb;
 			$this->table_name = $wpdb->prefix . 'happfoco_forms_data';
 
-			// Initialize dynamic hooks
 			add_action( 'init', array( $this, 'happfoco_dynamic_hooks' ) );
 		}
 
-		/*
-		 * Dynamic Hook Selection
-		 * This function fetches active hooks from the database and attaches them
+		/**
+		 * Attach a submission handler to each hook used by an enabled form.
+		 *
+		 * @return void
 		 */
 		public function happfoco_dynamic_hooks() {
 			global $wpdb;
 
-			$cache_key   = 'happfoco_active_configurations';
-			$cache_group = 'happfoco';
+			$cache_key   = Happfoco_Main::cache_key( 'active_configurations' );
+			$cache_group = Happfoco_Main::CACHE_GROUP;
 
 			$configurations = wp_cache_get( $cache_key, $cache_group );
 
@@ -51,19 +77,12 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 				return;
 			}
 
-			// Store configurations for later reference
-			foreach ( $configurations as $config ) {
-				$key                               = $config['form_type'] . '_' . $config['form_id'];
-				$this->form_configurations[ $key ] = $config;
-			}
-
-			// Track which hooks we've already added to avoid duplicate hook registrations
+			// Several forms can share a hook; register each form type + hook pair once.
 			$added_hooks = array();
 
 			foreach ( $configurations as $config ) {
 				$hook_key = $config['form_type'] . '_' . $config['active_hook'];
 
-				// Skip if we've already added this hook for this form type
 				if ( isset( $added_hooks[ $hook_key ] ) ) {
 					continue;
 				}
@@ -81,14 +100,14 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 						break;
 
 					case 'wpforms':
-						if ( $config['active_hook'] === 'wpforms_process_before' ) {
+						if ( 'wpforms_process_before' === $config['active_hook'] ) {
 							add_action(
 								$config['active_hook'],
 								array( $this, 'happfoco_handle_wpforms_2_params' ),
 								10,
 								2
 							);
-						} elseif ( $config['active_hook'] === 'wpforms_process_after' ) {
+						} elseif ( 'wpforms_process_after' === $config['active_hook'] ) {
 							add_action(
 								$config['active_hook'],
 								array( $this, 'happfoco_handle_wpforms_3_params' ),
@@ -100,7 +119,7 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 								$config['active_hook'],
 								array( $this, 'happfoco_handle_wpforms' ),
 								10,
-								4
+								3
 							);
 						}
 						$added_hooks[ $hook_key ] = true;
@@ -142,15 +161,14 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 		private function get_form_configuration( $form_id, $form_type, $current_hook ) {
 			global $wpdb;
 
-			// Check if configuration exists in memory first
 			$key = $form_type . '_' . $form_id . '_' . $current_hook;
 
 			if ( isset( $this->form_configurations[ $key ] ) ) {
 				return $this->form_configurations[ $key ];
 			}
 
-			$cache_key   = 'form_config_' . md5( $key );
-			$cache_group = 'my_plugin_forms';
+			$cache_key   = Happfoco_Main::cache_key( 'form_config_' . md5( $key ) );
+			$cache_group = Happfoco_Main::CACHE_GROUP;
 
 			$config = wp_cache_get( $cache_key, $cache_group );
 
@@ -175,25 +193,24 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 
 				wp_cache_set( $cache_key, $config, $cache_group, 300 );
 			}
-			// Store in memory cache for this request
+
 			$this->form_configurations[ $key ] = $config;
 
 			return $config;
 		}
 
 		/**
-		 * Fetch saved template settings for a specific form.
-		 * Returns template_id and param_mappings from happfoco_template_data.
+		 * Fetch the saved template settings for a form.
 		 *
 		 * @param int|string $form_id   The form ID.
 		 * @param string     $form_type The form type (cf7, wpforms, etc).
-		 * @return array|null
+		 * @return array|null Row with template_id and param_mappings, or null if none is saved.
 		 */
 		private function get_template_configuration( $form_id, $form_type ) {
 			global $wpdb;
 
-			$cache_key   = 'happfoco_template_config_' . md5( $form_id . '_' . $form_type );
-			$cache_group = 'happfoco';
+			$cache_key   = Happfoco_Main::cache_key( 'template_config_' . md5( $form_id . '_' . $form_type ) );
+			$cache_group = Happfoco_Main::CACHE_GROUP;
 
 			$config = wp_cache_get( $cache_key, $cache_group );
 
@@ -217,12 +234,30 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 		}
 
 		/**
-		 * Resolve country code from visitor IP
+		 * Resolve the visitor's country calling code from their IP address.
+		 *
+		 * The result is cached for the request so a submission triggers at
+		 * most one lookup.
+		 *
+		 * @return string Country calling code, e.g. "+91".
 		 */
 		private function resolve_country_code_from_ip() {
+			if ( null === $this->country_code ) {
+				$this->country_code = $this->lookup_country_code();
+			}
+
+			return $this->country_code;
+		}
+
+		/**
+		 * Look up the visitor's country calling code via ipapi.co.
+		 *
+		 * @return string Country calling code, e.g. "+91".
+		 */
+		private function lookup_country_code() {
 			$visitor_ip = '';
 
-			// Handle proxies / load balancers
+			// Behind a proxy or load balancer the client IP is the first forwarded address.
 			$forwarded_for = isset( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) : '';
 			$remote_addr   = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
 
@@ -233,7 +268,7 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 				$visitor_ip = $remote_addr;
 			}
 
-			// Fallback for localhost / dev environment
+			// Local requests have no public IP to look up.
 			if ( empty( $visitor_ip ) || in_array( $visitor_ip, array( '127.0.0.1', '::1' ), true ) ) {
 				return '+91';
 			}
@@ -251,7 +286,7 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 			}
 
 			Happfoco_Main::log_message( 'Failed to detect country code from IP: ' . $visitor_ip, 'warning' );
-			return '+1'; // last resort fallback
+			return '+1';
 		}
 
 		/**
@@ -261,61 +296,77 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 		 * value entered by the admin (not a reference to a submitted form
 		 * field), and the API expects it as an array of strings.
 		 *
-		 * @param array $mapping  Decoded connected_fields mapping.
-		 * @param array $api_data Data to send to the API, passed by reference.
+		 * Backward compatibility: up to 1.0.8, "tags" was mapped to a form
+		 * field. If the stored value matches a submitted field key, it is
+		 * treated as that legacy mapping and the visitor's value is used.
+		 *
+		 * @param array $mapping        Decoded connected_fields mapping.
+		 * @param array $api_data       Data to send to the API, passed by reference.
+		 * @param array $submitted_data Submitted form data keyed by field key/ID.
 		 */
-		private function apply_tags_mapping( $mapping, &$api_data ) {
-			if ( empty( $mapping['tags'] ) ) {
+		private function apply_tags_mapping( $mapping, &$api_data, $submitted_data = array() ) {
+			if ( empty( $mapping['tags'] ) || ! is_scalar( $mapping['tags'] ) ) {
 				return;
 			}
 
-			$tags = array_filter( array_map( 'trim', explode( ',', $mapping['tags'] ) ) );
+			$tags_value = (string) $mapping['tags'];
+
+			// Legacy field mapping — use the visitor's value (already set by the mapping loop, if not empty).
+			if ( is_array( $submitted_data ) && array_key_exists( $tags_value, $submitted_data ) ) {
+				$tags_value = isset( $api_data['tags'] ) ? (string) $api_data['tags'] : '';
+			}
+
+			unset( $api_data['tags'] );
+
+			$tags = array_filter( array_map( 'trim', explode( ',', $tags_value ) ) );
 
 			if ( ! empty( $tags ) ) {
 				$api_data['tags'] = array_values( array_map( 'sanitize_text_field', $tags ) );
 			}
 		}
 
-		/*
-		 * Handle API Communication
+		/**
+		 * Send the mapped submission data to the Happilee createContact endpoint.
 		 *
-		 * Sends form submission data to the createContact endpoint
-		 * using the x-api-key header (decrypted from stored settings).
+		 * The form ID, form name and a lead source of "{form name}-Happilee web"
+		 * are added so the contact can be traced back to the submitting form.
+		 *
+		 * @param array $api_data Mapped field values from the form submission.
+		 * @param array $config   Stored configuration row of the submitted form.
+		 * @return bool True on success, false on failure.
 		 */
-		private function happfoco_send_to_api( $api_data ) {
-
-			$api_instance = Happfoco_Api::get_instance();
-
-			// Use the dedicated createContact endpoint
-			$api_endpoint = Happfoco_Api::API_ENDPOINT_CREATE_CONTACT;
-
-			// Retrieve and decrypt the stored API key
-			$api_key = $api_instance->get_api_key();
-
-			if ( empty( $api_endpoint ) ) {
-				Happfoco_Main::log_message( 'API endpoint is not configured', 'error' );
-				return false;
-			}
+		private function happfoco_send_to_api( $api_data, $config ) {
+			$api_key = Happfoco_Api::get_instance()->get_api_key();
 
 			if ( empty( $api_key ) ) {
 				Happfoco_Main::log_message( 'API key is not configured', 'error' );
 				return false;
 			}
 
-			// if missing or set to "country-code", detect from visitor IP
-			if ( empty( $api_data['country_code'] ) || $api_data['country_code'] === 'country-code' ) {
+			if ( empty( $api_data['country_code'] ) || 'country-code' === $api_data['country_code'] ) {
 				$api_data['country_code'] = $this->resolve_country_code_from_ip();
 			}
 
-			$response = wp_remote_post( esc_url_raw( $api_endpoint ), array(
-				'headers' => array(
-					'x-api-key'    => $api_key,
-					'Content-Type' => 'application/json',
-				),
-				'body'    => wp_json_encode( $api_data ),
-			) );
+			$form_id   = isset( $config['form_id'] ) ? (string) $config['form_id'] : '';
+			$form_name = ! empty( $config['form_name'] ) ? sanitize_text_field( $config['form_name'] ) : $form_id;
 
-			// Handle response
+			$api_data['form_id']     = $form_id;
+			$api_data['form_name']   = $form_name;
+			$api_data['lead_source'] = $form_name . '-Happilee web';
+
+			$response = wp_remote_post(
+				esc_url_raw( Happfoco_Api::API_ENDPOINT_CREATE_CONTACT ),
+				array(
+					'headers'     => array(
+						'x-api-key'    => $api_key,
+						'Content-Type' => 'application/json',
+					),
+					'body'        => wp_json_encode( $api_data ),
+					'redirection' => 0,
+					'sslverify'   => true,
+				)
+			);
+
 			if ( is_wp_error( $response ) ) {
 				Happfoco_Main::log_message( 'API request error: ' . $response->get_error_message(), 'error' );
 				return false;
@@ -336,17 +387,15 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 		}
 
 		/**
-		 * Send a WhatsApp template message via the sendMessage API.
+		 * Send the form's WhatsApp template message via the sendMessage API.
 		 *
-		 * Builds the payload expected by /sendMessage:
-		 * - candidate_details.phone_number from api_data
-		 * - template_message_id from saved template settings
-		 * - template_params.body.value mapped from form submission values
+		 * Template parameters are filled from the submitted values using the
+		 * saved parameter mappings.
 		 *
-		 * @param array  $api_data         Mapped field values from form submission.
-		 *                                 Must contain 'phone_number'.
-		 * @param string $form_id          The form ID.
-		 * @param string $form_type        The form type.
+		 * @param array  $api_data  Mapped field values; must contain 'phone_number'.
+		 * @param string $form_id   The form ID.
+		 * @param string $form_type The form type.
+		 * @param array  $raw_data  Submitted values keyed by the form plugin's field key.
 		 * @return void
 		 */
 		private function happfoco_send_template_message( $api_data, $form_id, $form_type, $raw_data = array() ) {
@@ -392,7 +441,10 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 				'candidate_details'   => array( 'phone_number' => $full_phone ),
 				'template_message_id' => $template_id,
 				'template_params'     => array(
-					array( 'name' => 'body', 'value' => $body_value ),
+					array(
+						'name'  => 'body',
+						'value' => $body_value,
+					),
 				),
 			);
 
@@ -405,13 +457,15 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 			}
 
 			$response = wp_remote_post(
-				esc_url_raw( Happfoco_Api::API_ENDPOINT_SAVE_TEMPLATES ),
+				esc_url_raw( Happfoco_Api::API_ENDPOINT_SEND_MESSAGE ),
 				array(
-					'headers' => array(
+					'headers'     => array(
 						'x-api-key'    => $api_key,
 						'Content-Type' => 'application/json',
 					),
-					'body'    => wp_json_encode( $payload ),
+					'body'        => wp_json_encode( $payload ),
+					'redirection' => 0,
+					'sslverify'   => true,
 				)
 			);
 
@@ -441,8 +495,11 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 			}
 		}
 
-		/*
-		 * Handle Contact Form 7 Submission
+		/**
+		 * Handle a Contact Form 7 submission.
+		 *
+		 * @param WPCF7_ContactForm $contact_form The submitted form.
+		 * @return void
 		 */
 		public function happfoco_handle_cf7( $contact_form ) {
 			static $processed_submissions = array();
@@ -453,7 +510,12 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 				return;
 			}
 
-			// Prevent duplicate processing if CF7 fires the hook multiple times (e.g., for Mail and Mail 2)
+			// wpcf7_submit also fires for spam, invalid and aborted submissions; skip those.
+			if ( ! in_array( $submission->get_status(), array( 'init', 'mail_sent', 'mail_failed' ), true ) ) {
+				return;
+			}
+
+			// CF7 can fire the same hook more than once per submission (e.g. Mail and Mail 2).
 			$hash = spl_object_hash( $submission );
 			if ( isset( $processed_submissions[ $hash ] ) ) {
 				return;
@@ -486,7 +548,6 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 				if ( isset( $posted_data[ $field_key ] ) ) {
 					$field_value = $posted_data[ $field_key ];
 
-					// Handle CF7 fields like radio / checkbox (arrays)
 					if ( is_array( $field_value ) ) {
 						$field_value = implode( ', ', $field_value );
 					}
@@ -494,25 +555,26 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 				}
 			}
 
-			$this->apply_tags_mapping( $mapping, $api_data );
+			$this->apply_tags_mapping( $mapping, $api_data, $posted_data );
 
 			if ( empty( $api_data ) || empty( $api_data['phone_number'] ) ) {
 				Happfoco_Main::log_message( 'No mapped field data found for CF7 form ID ' . $form_id, 'error' );
 				return;
 			}
 
-			$this->happfoco_send_to_api( $api_data );
-
-			// Pass $posted_data as raw_data so template param lookup uses CF7 field names.
+			$this->happfoco_send_to_api( $api_data, $config );
 			$this->happfoco_send_template_message( $api_data, $form_id, 'cf7', $posted_data );
-
 		}
 
-		/*
-		 * Handle WPForms Submission
+		/**
+		 * Handle a WPForms submission for hooks that pass fields, entry and form data.
+		 *
+		 * @param array $fields    Processed field data.
+		 * @param array $entry     The submitted entry data.
+		 * @param array $form_data The form configuration data.
+		 * @return void
 		 */
-
-		public function happfoco_handle_wpforms( $fields, $entry, $form_data, $entry_id ) {
+		public function happfoco_handle_wpforms( $fields, $entry, $form_data ) {
 			$form_id      = isset( $form_data['id'] ) ? $form_data['id'] : 0;
 			$current_hook = current_action();
 
@@ -532,7 +594,6 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 			}
 
 			$api_data     = array();
-			// Define field types to ignore
 			$ignore_types = array(
 				'recaptcha',
 				'captcha',
@@ -564,16 +625,21 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 					continue;
 				}
 
-				if ( isset( $field['name'] ) && $field['name'] === 'Name' && $happilee_field === 'First Name' ) {
+				if ( isset( $field['type'] ) && 'name' === $field['type'] && 'first_name' === $happilee_field ) {
 					$first                       = isset( $field['first'] ) ? sanitize_text_field( $field['first'] ) : '';
 					$middle                      = isset( $field['middle'] ) ? sanitize_text_field( $field['middle'] ) : '';
 					$api_data[ $happilee_field ] = trim( $first . ' ' . $middle );
-				} elseif ( isset( $field['name'] ) && $field['name'] === 'Name' && $happilee_field === 'Last Name' ) {
+
+					// A "simple" format Name field has a single input, so use the full value.
+					if ( '' === $api_data[ $happilee_field ] && isset( $field['value'] ) ) {
+						$api_data[ $happilee_field ] = sanitize_text_field( $field['value'] );
+					}
+				} elseif ( isset( $field['type'] ) && 'name' === $field['type'] && 'last_name' === $happilee_field ) {
 					$api_data[ $happilee_field ] = isset( $field['last'] ) ? sanitize_text_field( $field['last'] ) : '';
 				} else {
 					$field_value = isset( $field['value'] ) ? $field['value'] : '';
 
-					if ( empty( $field_value ) && $field_value !== '0' ) {
+					if ( empty( $field_value ) && '0' !== $field_value ) {
 						continue;
 					}
 
@@ -598,14 +664,14 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 				$raw_data[ $field_id ] = $val;
 			}
 
-			$this->apply_tags_mapping( $mapping, $api_data );
+			$this->apply_tags_mapping( $mapping, $api_data, $raw_data );
 
 			if ( empty( $api_data ) || empty( $api_data['phone_number'] ) ) {
 				Happfoco_Main::log_message( 'No mapped field data found for WPForms form ID ' . $form_id, 'error' );
 				return;
 			}
 
-			$this->happfoco_send_to_api( $api_data );
+			$this->happfoco_send_to_api( $api_data, $config );
 			$this->happfoco_send_template_message( $api_data, $form_id, 'wpforms', $raw_data );
 		}
 
@@ -635,7 +701,6 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 				return;
 			}
 
-			// Get fields from form_data instead
 			$fields = isset( $form_data['fields'] ) ? $form_data['fields'] : array();
 
 			if ( empty( $fields ) ) {
@@ -678,18 +743,18 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 
 				$field_value = isset( $entry['fields'][ $wpforms_field_id ] ) ? $entry['fields'][ $wpforms_field_id ] : '';
 
-				if ( is_array( $field_value ) && 'First Name' === $happilee_field ) {
+				if ( is_array( $field_value ) && 'first_name' === $happilee_field ) {
 					$first       = isset( $field_value['first'] ) ? sanitize_text_field( $field_value['first'] ) : '';
 					$middle      = isset( $field_value['middle'] ) ? sanitize_text_field( $field_value['middle'] ) : '';
 					$field_value = trim( $first . ' ' . $middle );
 				}
 
-				if ( is_array( $field_value ) && 'Last Name' === $happilee_field ) {
+				if ( is_array( $field_value ) && 'last_name' === $happilee_field ) {
 					$last        = isset( $field_value['last'] ) ? sanitize_text_field( $field_value['last'] ) : '';
 					$field_value = $last;
 				}
 
-				if ( empty( $field_value ) && $field_value !== '0' ) {
+				if ( empty( $field_value ) && '0' !== $field_value ) {
 					continue;
 				}
 
@@ -714,14 +779,14 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 				}
 			}
 
-			$this->apply_tags_mapping( $mapping, $api_data );
+			$this->apply_tags_mapping( $mapping, $api_data, $raw_data );
 
 			if ( empty( $api_data ) || empty( $api_data['phone_number'] ) ) {
 				Happfoco_Main::log_message( 'No mapped field data found for WPForms form ID ' . $form_id, 'warning' );
 				return;
 			}
 
-			$this->happfoco_send_to_api( $api_data );
+			$this->happfoco_send_to_api( $api_data, $config );
 			$this->happfoco_send_template_message( $api_data, $form_id, 'wpforms', $raw_data );
 		}
 
@@ -785,19 +850,24 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 					continue;
 				}
 
-				if ( isset( $field['name'] ) && $field['name'] === 'Name' && $happilee_field === 'First Name' ) {
+				if ( isset( $field['type'] ) && 'name' === $field['type'] && 'first_name' === $happilee_field ) {
 					$first                       = isset( $field['first'] ) ? sanitize_text_field( $field['first'] ) : '';
 					$middle                      = isset( $field['middle'] ) ? sanitize_text_field( $field['middle'] ) : '';
 					$api_data[ $happilee_field ] = trim( $first . ' ' . $middle );
+
+					// A "simple" format Name field has a single input, so use the full value.
+					if ( '' === $api_data[ $happilee_field ] && isset( $field['value'] ) ) {
+						$api_data[ $happilee_field ] = sanitize_text_field( $field['value'] );
+					}
 					continue;
-				} elseif ( isset( $field['name'] ) && $field['name'] === 'Name' && $happilee_field === 'Last Name' ) {
+				} elseif ( isset( $field['type'] ) && 'name' === $field['type'] && 'last_name' === $happilee_field ) {
 					$api_data[ $happilee_field ] = isset( $field['last'] ) ? sanitize_text_field( $field['last'] ) : '';
 					continue;
 				}
 
 				$field_value = isset( $field['value'] ) ? $field['value'] : '';
 
-				if ( empty( $field_value ) && $field_value !== '0' ) {
+				if ( empty( $field_value ) && '0' !== $field_value ) {
 					continue;
 				}
 				if ( is_array( $field_value ) ) {
@@ -820,21 +890,23 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 				$raw_data[ $field_id ] = $val;
 			}
 
-			$this->apply_tags_mapping( $mapping, $api_data );
+			$this->apply_tags_mapping( $mapping, $api_data, $raw_data );
 
 			if ( empty( $api_data ) || empty( $api_data['phone_number'] ) ) {
 				Happfoco_Main::log_message( 'No mapped field data found for WPForms form ID ' . $form_id, 'warning' );
 				return;
 			}
 
-			$this->happfoco_send_to_api( $api_data );
+			$this->happfoco_send_to_api( $api_data, $config );
 			$this->happfoco_send_template_message( $api_data, $form_id, 'wpforms', $raw_data );
 		}
 
-		/*
-		 * Handle Ninja Forms Submission
+		/**
+		 * Handle a Ninja Forms submission.
+		 *
+		 * @param array $form_data Submission data passed by Ninja Forms.
+		 * @return void
 		 */
-
 		public function happfoco_handle_ninja_forms( $form_data ) {
 			if ( isset( $form_data['id'] ) ) {
 				$form_id = $form_data['id'];
@@ -868,38 +940,6 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 				Happfoco_Main::log_message( 'No submitted fields for Ninja Forms form ID ' . $form_id, 'error' );
 				return;
 			}
-			$form_title = '';
-
-			// Get form title: Method 1
-			if ( isset( $form_data['settings']['title'] ) && ! empty( $form_data['settings']['title'] ) ) {
-				$form_title = $form_data['settings']['title'];
-			}
-
-			// Method 2:
-			if ( empty( $form_title ) && class_exists( 'Ninja_Forms' ) ) {
-				try {
-					$form = Ninja_Forms()->form( $form_id )->get();
-					if ( $form && method_exists( $form, 'get_setting' ) ) {
-						$title = $form->get_setting( 'title' );
-						if ( ! empty( $title ) ) {
-							$form_title = $title;
-						}
-					}
-				} catch ( Exception $e ) {
-					Happfoco_Main::log_message( 'Error getting Ninja Forms title: ' . $e->getMessage(), 'error' );
-				}
-			}
-
-			// Method 3:
-			if ( empty( $form_title ) && isset( $config['form_name'] ) && ! empty( $config['form_name'] ) ) {
-				$form_title = $config['form_name'];
-			}
-
-			// Fallback
-			if ( empty( $form_title ) ) {
-				$form_title = 'Ninja Form #' . $form_id;
-			}
-
 			$api_data = array();
 			foreach ( $mapping as $happilee_field => $ninja_field_key ) {
 
@@ -908,7 +948,7 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 					if ( isset( $field['key'] ) && $field['key'] === $ninja_field_key ) {
 						$field_value = isset( $field['value'] ) ? $field['value'] : '';
 
-						if ( empty( $field_value ) && $field_value !== '0' ) {
+						if ( empty( $field_value ) && '0' !== $field_value ) {
 							break;
 						}
 						if ( is_array( $field_value ) ) {
@@ -930,22 +970,24 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 				}
 			}
 
-			$this->apply_tags_mapping( $mapping, $api_data );
+			$this->apply_tags_mapping( $mapping, $api_data, $raw_data );
 
 			if ( empty( $api_data ) || empty( $api_data['phone_number'] ) ) {
 				Happfoco_Main::log_message( 'No mapped field data found for Ninja Forms form ID ' . $form_id, 'warning' );
 				return;
 			}
 
-			$this->happfoco_send_to_api( $api_data );
+			$this->happfoco_send_to_api( $api_data, $config );
 			$this->happfoco_send_template_message( $api_data, $form_id, 'ninja_forms', $raw_data );
 		}
 
-		/*
-		 * Handle Forminator Submission
+		/**
+		 * Handle a Forminator submission.
+		 *
+		 * @param int|array|object $form_id Form ID, or the entry/data passed by the hook.
+		 * @return void
 		 */
-		public function happfoco_handle_forminator( $form_id, $response = null ) {
-
+		public function happfoco_handle_forminator( $form_id ) {
 			$current_hook = current_action();
 
 			if ( is_object( $form_id ) ) {
@@ -987,7 +1029,7 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 				return;
 			}
 			$submitted_data = wp_unslash( $_POST );
-			// phpcs:enable WordPress.Security.NonceVerification.Missing  ← rule back on from here
+			// phpcs:enable WordPress.Security.NonceVerification.Missing
 
 			$api_data = array();
 
@@ -995,7 +1037,6 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 				if ( isset( $submitted_data[ $field_key ] ) ) {
 					$field_value = $submitted_data[ $field_key ];
 
-					// Handle array values (checkboxes, multi-select, etc.)
 					if ( is_array( $field_value ) ) {
 						$field_value = implode( ', ', array_map( 'sanitize_text_field', $field_value ) );
 					} else {
@@ -1003,20 +1044,17 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 					}
 					$api_data[ $label ] = $field_value;
 				}
-
 			}
 
-			$this->apply_tags_mapping( $mapping, $api_data );
+			$this->apply_tags_mapping( $mapping, $api_data, $submitted_data );
 
 			if ( empty( $api_data ) || empty( $api_data['phone_number'] ) ) {
 				Happfoco_Main::log_message( 'No mapped field data found for Forminator form ID ' . $form_id, 'warning' );
 				return;
 			}
 
-			$this->happfoco_send_to_api( $api_data );
+			$this->happfoco_send_to_api( $api_data, $config );
 			$this->happfoco_send_template_message( $api_data, $form_id, 'forminator', $submitted_data );
-
 		}
-
 	}
 }

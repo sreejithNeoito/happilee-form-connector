@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import WPHFC_HookModal from "./WP-HFC-hookModal.jsx";
 
+// Form IDs are only unique within a form plugin, so state is keyed by type + ID
+const getFormKey = (formType, formId) => `${formType}_${formId}`;
+
 const WPHFC_FormDetails = ({ activeForm }) => {
   const [selectedFormId, setSelectedFormId] = useState(null);
   const [selectedFormName, setSelectedFormName] = useState("");
@@ -36,7 +39,7 @@ const WPHFC_FormDetails = ({ activeForm }) => {
           const hooks = {};
           const formFields = {};
           data.form_data.forEach((form) => {
-            const formKey = String(form.form_id);
+            const formKey = getFormKey(form.form_type, form.form_id);
             const isEnabled = form.is_enabled === 1 || form.is_enabled === "1";
             formFields[formKey] = form.connected_fields;
             states[formKey] = isEnabled;
@@ -64,11 +67,10 @@ const WPHFC_FormDetails = ({ activeForm }) => {
   };
 
   const handleToggle = async (formId, formType, formName) => {
-    const formKey = String(formId);
+    const formKey = getFormKey(formType, formId);
     const currentState = formStates[formKey] || false;
     const newState = !currentState;
 
-    // Get existing hook or use default
     let activeHook = activeHooks[formKey] || "";
 
     if (!activeHook) {
@@ -85,8 +87,6 @@ const WPHFC_FormDetails = ({ activeForm }) => {
         case "forminator":
           activeHook = "forminator_form_after_save_entry";
           break;
-        default:
-          console.warn("Unknown form type:", formType);
       }
     }
 
@@ -136,7 +136,7 @@ const WPHFC_FormDetails = ({ activeForm }) => {
     setSelectedFormName("");
 
     if (shouldRefresh) {
-      fetchFormdata(); // Refresh data after saving
+      fetchFormdata();
     }
   };
 
@@ -196,7 +196,7 @@ const WPHFC_FormDetails = ({ activeForm }) => {
                 </thead>
                 <tbody>
                   {activeForm.forms.map((form, index) => {
-                    const formKey = String(form.id);
+                    const formKey = getFormKey(activeForm.type, form.id);
                     const isChecked = formStates[formKey] || false;
                     return (
                       <tr
@@ -303,9 +303,11 @@ const WPHFC_FormDetails = ({ activeForm }) => {
               selectedFormId={selectedFormId}
               formType={activeForm.type}
               onClose={handleModalClose}
-              activeHook={activeHooks[String(selectedFormId)] || ""}
+              activeHook={
+                activeHooks[getFormKey(activeForm.type, selectedFormId)] || ""
+              }
               formName={selectedFormName}
-              CurrentFields={formFields}
+              savedFields={formFields[getFormKey(activeForm.type, selectedFormId)]}
             />
           )}
         </div>
