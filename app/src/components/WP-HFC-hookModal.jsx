@@ -109,9 +109,10 @@ const Section = ({ step, title, description, children }) => (
   </div>
 );
 
-const FieldRow = ({ label, required, children }) => (
+const FieldRow = ({ label, required, labelWidth = "sm:wphfc-w-32", children }) => (
   <div className="wphfc-flex wphfc-flex-col sm:wphfc-flex-row sm:wphfc-items-center wphfc-gap-1 sm:wphfc-gap-3">
-    <label className="wphfc-text-sm wphfc-font-medium wphfc-text-gray-700 sm:wphfc-w-32 wphfc-shrink-0">
+    <label
+      className={`wphfc-text-sm wphfc-font-medium wphfc-text-gray-700 ${labelWidth} wphfc-shrink-0`}>
       {label}
       {required && <span className="wphfc-ml-1 wphfc-text-red-500">*</span>}
     </label>
@@ -704,6 +705,22 @@ const WPHFC_HookModal = ({
                         )}
                       </Dropdown>
                     </FieldRow>
+
+                    <FieldRow label="Tags">
+                      <input
+                        type="text"
+                        className="wphfc-text-input"
+                        placeholder="Enter tags (comma separated)"
+                        value={fieldMappings["Tags"] || ""}
+                        onChange={(e) =>
+                          setFieldMappings((prev) => ({
+                            ...prev,
+                            Tags: e.target.value,
+                          }))
+                        }
+                        disabled={isSaving}
+                      />
+                    </FieldRow>
                   </div>
 
                   {selectedTemplate && (
@@ -716,9 +733,10 @@ const WPHFC_HookModal = ({
                           {templateParams.map((param) => (
                             <FieldRow
                               key={param}
+                              labelWidth="sm:wphfc-w-48"
                               label={
                                 <span
-                                  className="wphfc-inline-block wphfc-text-xs wphfc-px-2 wphfc-py-1 wphfc-rounded wphfc-font-mono"
+                                  className="wphfc-inline-block wphfc-max-w-full wphfc-break-all wphfc-text-xs wphfc-px-2 wphfc-py-1 wphfc-rounded wphfc-font-mono"
                                   style={{
                                     background: "#fef9c3",
                                     color: "#854d0e",

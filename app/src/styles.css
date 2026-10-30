@@ -128,3 +128,35 @@ input:checked + .wphfc-slider:before {
   box-shadow: 4px 0 8px rgba(0, 0, 0, 0.1) !important;
   overflow: hidden;
 }
+
+/* Text input matching the modal dropdowns; outranks WP admin's input[type="text"] rules */
+input[type="text"].wphfc-text-input {
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 14px;
+  line-height: 20px;
+  color: #111827;
+  background-color: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  box-shadow: none;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+input[type="text"].wphfc-text-input::placeholder {
+  color: #9ca3af;
+}
+input[type="text"].wphfc-text-input:hover {
+  border-color: #9ca3af;
+}
+input[type="text"].wphfc-text-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px #dbeafe;
+  outline: none;
+}
+input[type="text"].wphfc-text-input:disabled {
+  background-color: #f9fafb;
+  cursor: not-allowed;
+}
