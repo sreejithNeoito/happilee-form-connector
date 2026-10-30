@@ -692,6 +692,27 @@ const WPHFC_HookModal = ({
                       </Dropdown>
                     </FieldRow>
 
+                    {["First Name", "Last Name"].map((label) => (
+                      <FieldRow key={label} label={label}>
+                        <Dropdown
+                          {...dropdownState(label)}
+                          valueLabel={getFormFieldLabel(fieldMappings[label])}
+                          placeholder={`Select the ${label.toLowerCase()} field`}
+                          disabled={isSaving}>
+                          <DropdownOption
+                            muted
+                            selected={!fieldMappings[label]}
+                            onClick={() => handleFieldMapping(label, null)}>
+                            -- None --
+                          </DropdownOption>
+                          {formFieldOptions(
+                            (value) => fieldMappings[label] === value,
+                            (formField) => handleFieldMapping(label, formField),
+                          )}
+                        </Dropdown>
+                      </FieldRow>
+                    ))}
+
                     <FieldRow label="Mobile" required>
                       <Dropdown
                         {...dropdownState("mobile")}

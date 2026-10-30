@@ -326,6 +326,47 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 		}
 
 		/**
+		 * Resolve a WPForms Name field part mapping such as "3.last".
+		 *
+		 * @param array  $values Submitted values keyed by field ID; Name fields hold first/middle/last.
+		 * @param string $key    Mapped form field key.
+		 * @return string|null The part's value, or null if $key is not a name part key.
+		 */
+		private function get_wpforms_name_part( $values, $key ) {
+			if ( ! preg_match( '/^(\d+)\.(first|middle|last)$/', (string) $key, $matches ) ) {
+				return null;
+			}
+
+			list( , $field_id, $part ) = $matches;
+
+			if ( ! isset( $values[ $field_id ] ) || ! is_array( $values[ $field_id ] ) || ! isset( $values[ $field_id ][ $part ] ) ) {
+				return '';
+			}
+
+			return sanitize_text_field( $values[ $field_id ][ $part ] );
+		}
+
+		/**
+		 * Add each WPForms Name field part to $raw_data, keyed "{field id}.{part}".
+		 *
+		 * @param array $raw_data Raw submitted values, passed by reference.
+		 * @param array $values   Submitted values keyed by field ID; Name fields hold first/middle/last.
+		 */
+		private function add_wpforms_name_parts( &$raw_data, $values ) {
+			foreach ( $values as $field_id => $value ) {
+				if ( ! is_array( $value ) ) {
+					continue;
+				}
+
+				foreach ( array( 'first', 'middle', 'last' ) as $part ) {
+					if ( isset( $value[ $part ] ) ) {
+						$raw_data[ $field_id . '.' . $part ] = $value[ $part ];
+					}
+				}
+			}
+		}
+
+		/**
 		 * Send the mapped submission data to the Happilee createContact endpoint.
 		 *
 		 * The form ID, form name and a lead source of "{form name}-Happilee web"
@@ -616,6 +657,14 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 
 			foreach ( $mapping as $happilee_field => $wpforms_value ) {
 
+				$name_part = 'tags' === $happilee_field ? null : $this->get_wpforms_name_part( $fields, $wpforms_value );
+				if ( null !== $name_part ) {
+					if ( '' !== $name_part ) {
+						$api_data[ $happilee_field ] = $name_part;
+					}
+					continue;
+				}
+
 				if ( ! isset( $fields[ $wpforms_value ] ) ) {
 					continue;
 				}
@@ -664,6 +713,7 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 				$raw_data[ $field_id ] = $val;
 			}
 
+			$this->add_wpforms_name_parts( $raw_data, $fields );
 			$this->apply_tags_mapping( $mapping, $api_data, $raw_data );
 
 			if ( empty( $api_data ) || empty( $api_data['phone_number'] ) ) {
@@ -731,6 +781,14 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 
 			foreach ( $mapping as $happilee_field => $wpforms_field_id ) {
 
+				$name_part = 'tags' === $happilee_field ? null : $this->get_wpforms_name_part( isset( $entry['fields'] ) ? $entry['fields'] : array(), $wpforms_field_id );
+				if ( null !== $name_part ) {
+					if ( '' !== $name_part ) {
+						$api_data[ $happilee_field ] = $name_part;
+					}
+					continue;
+				}
+
 				if ( ! isset( $fields[ $wpforms_field_id ] ) ) {
 					continue;
 				}
@@ -779,6 +837,7 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 				}
 			}
 
+			$this->add_wpforms_name_parts( $raw_data, $entry_fields );
 			$this->apply_tags_mapping( $mapping, $api_data, $raw_data );
 
 			if ( empty( $api_data ) || empty( $api_data['phone_number'] ) ) {
@@ -840,6 +899,14 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 
 			foreach ( $mapping as $happilee_field => $wpforms_field_id ) {
 
+				$name_part = 'tags' === $happilee_field ? null : $this->get_wpforms_name_part( $fields, $wpforms_field_id );
+				if ( null !== $name_part ) {
+					if ( '' !== $name_part ) {
+						$api_data[ $happilee_field ] = $name_part;
+					}
+					continue;
+				}
+
 				if ( ! isset( $fields[ $wpforms_field_id ] ) ) {
 					continue;
 				}
@@ -890,6 +957,7 @@ if ( ! class_exists( 'Happfoco_Operation' ) ) {
 				$raw_data[ $field_id ] = $val;
 			}
 
+			$this->add_wpforms_name_parts( $raw_data, $fields );
 			$this->apply_tags_mapping( $mapping, $api_data, $raw_data );
 
 			if ( empty( $api_data ) || empty( $api_data['phone_number'] ) ) {

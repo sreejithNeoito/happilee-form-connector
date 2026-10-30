@@ -802,6 +802,32 @@ if ( ! class_exists( 'Happfoco_Api' ) ) {
 						'label' => sanitize_text_field( $field['label'] ),
 						'type'  => sanitize_text_field( $field['type'] ),
 					);
+
+					// List each part of a multi-input Name field, keyed "{field id}.{part}".
+					$name_format = isset( $field['format'] ) ? $field['format'] : 'first-last';
+					if ( 'name' === $field['type'] && 'simple' !== $name_format ) {
+						$name_parts = array(
+							/* translators: %s: Name field label. */
+							'first'  => __( '%s (First)', 'happilee-forms-connector' ),
+							/* translators: %s: Name field label. */
+							'middle' => __( '%s (Middle)', 'happilee-forms-connector' ),
+							/* translators: %s: Name field label. */
+							'last'   => __( '%s (Last)', 'happilee-forms-connector' ),
+						);
+
+						if ( 'first-middle-last' !== $name_format ) {
+							unset( $name_parts['middle'] );
+						}
+
+						foreach ( $name_parts as $part => $part_label ) {
+							$fields[] = array(
+								'id'    => sanitize_text_field( $field['id'] . '.' . $part ),
+								'name'  => sanitize_text_field( $field['id'] . '.' . $part ),
+								'label' => sanitize_text_field( sprintf( $part_label, $field['label'] ) ),
+								'type'  => 'name',
+							);
+						}
+					}
 				}
 
 				return new WP_REST_Response(
