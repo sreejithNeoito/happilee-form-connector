@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import FomDetails from "./WP-HFC-formdetails.jsx";
+import WPHFC_FormDetails from "./WP-HFC-formdetails.jsx";
 
-const WPHFC_ApiConfiguration = () => {
+const WPHFC_FormSettings = () => {
   const [forms, setForms] = useState(null);
   const [activeForm, setActiveForm] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -26,7 +26,6 @@ const WPHFC_ApiConfiguration = () => {
         const data = await response.json();
         setForms(data);
 
-        // Auto-select first plugin if available
         if (data?.plugins && data.plugins.length > 0) {
           setActiveForm(data.plugins[0]);
         }
@@ -38,7 +37,6 @@ const WPHFC_ApiConfiguration = () => {
     }
   };
 
-  // Check if forms data exists and has plugins
   const hasPlugins =
     forms?.plugins && Array.isArray(forms.plugins) && forms.plugins.length > 0;
 
@@ -96,11 +94,11 @@ const WPHFC_ApiConfiguration = () => {
         </div>
 
         <div className="md:wphfc-w-[80%] wphfc-w-full wphfc-bg-white wphfc-rounded-lg wphfc-shadow-md">
-          <FomDetails activeForm={activeForm} />
+          <WPHFC_FormDetails activeForm={activeForm} />
         </div>
       </div>
     </div>
   );
 };
 
-export default WPHFC_ApiConfiguration;
+export default WPHFC_FormSettings;

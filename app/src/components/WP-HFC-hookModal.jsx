@@ -1,12 +1,124 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import WPHFC_TemplateListing, {
-  ITEMS_PER_PAGE,
-} from "./WP-HFC-templateListing";
-import WPHFC_TemplateSearch from "./WP-HFC-themeSearch";
-import WPHFC_TemplateSettings from "./WP-HFC-templateSettings";
+import WPHFC_WhatsappPreview from "./WP-HFC-whatsappPreview";
+
+const ChevronIcon = ({ isOpen }) => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`wphfc-shrink-0 wphfc-text-gray-500 wphfc-transition-transform wphfc-duration-200 ${isOpen ? "wphfc-rotate-180" : ""}`}>
+    <path
+      d="M6 9L12 15L18 9"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+// Custom select: trigger button + floating option list with a click-away backdrop
+const Dropdown = ({
+  isOpen,
+  setIsOpen,
+  valueLabel,
+  placeholder,
+  disabled,
+  header,
+  children,
+}) => (
+  <div className="wphfc-relative wphfc-w-full">
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => setIsOpen(!isOpen)}
+      className={`wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-bg-white wphfc-border wphfc-border-solid wphfc-rounded-lg wphfc-flex wphfc-items-center wphfc-justify-between wphfc-gap-2 wphfc-text-sm wphfc-text-left wphfc-cursor-pointer wphfc-transition-colors disabled:wphfc-cursor-not-allowed disabled:wphfc-bg-gray-50 ${
+        isOpen
+          ? "wphfc-border-blue-500 wphfc-ring-2 wphfc-ring-blue-100"
+          : "wphfc-border-gray-300 hover:wphfc-border-gray-400"
+      }`}>
+      <span
+        className={`wphfc-truncate ${valueLabel ? "wphfc-text-gray-900" : "wphfc-text-gray-400"}`}>
+        {valueLabel || placeholder}
+      </span>
+      <ChevronIcon isOpen={isOpen} />
+    </button>
+    {isOpen && (
+      <>
+        <div
+          className="wphfc-fixed wphfc-inset-0 wphfc-z-10"
+          onClick={() => setIsOpen(false)}
+        />
+        <div className="wphfc-absolute wphfc-z-20 wphfc-w-full wphfc-mt-1 wphfc-bg-white wphfc-border wphfc-border-solid wphfc-border-gray-200 wphfc-rounded-lg wphfc-shadow-lg wphfc-overflow-hidden">
+          {header}
+          <ul className="wphfc-m-0 wphfc-py-1 wphfc-max-h-56 wphfc-overflow-y-auto">
+            {children}
+          </ul>
+        </div>
+      </>
+    )}
+  </div>
+);
+
+const DropdownOption = ({ selected, muted, onClick, children }) => (
+  <li className="wphfc-m-0">
+    <button
+      type="button"
+      onClick={onClick}
+      className={`wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-text-left wphfc-text-sm wphfc-cursor-pointer wphfc-border-none wphfc-transition-colors ${
+        selected
+          ? "wphfc-bg-blue-50 wphfc-text-primary wphfc-font-medium"
+          : muted
+            ? "wphfc-bg-transparent wphfc-text-gray-400 hover:wphfc-bg-gray-50"
+            : "wphfc-bg-transparent wphfc-text-gray-700 hover:wphfc-bg-gray-50"
+      }`}>
+      {children}
+    </button>
+  </li>
+);
+
+const EmptyOption = ({ children }) => (
+  <li className="wphfc-m-0 wphfc-px-3 wphfc-py-2 wphfc-text-sm wphfc-text-gray-400 wphfc-italic">
+    {children}
+  </li>
+);
+
+const Section = ({ step, title, description, children }) => (
+  <div className="wphfc-bg-white wphfc-border wphfc-border-solid wphfc-border-gray-200 wphfc-rounded-xl wphfc-p-4">
+    <div className="wphfc-flex wphfc-items-start wphfc-gap-3 wphfc-mb-4">
+      <span className="wphfc-flex wphfc-items-center wphfc-justify-center wphfc-shrink-0 wphfc-w-6 wphfc-h-6 wphfc-rounded-full wphfc-bg-primary wphfc-text-white wphfc-text-xs wphfc-font-semibold">
+        {step}
+      </span>
+      <div>
+        <h4 className="wphfc-m-0 wphfc-text-sm wphfc-font-semibold wphfc-text-gray-800">
+          {title}
+        </h4>
+        {description && (
+          <p className="wphfc-m-0 wphfc-mt-0.5 wphfc-text-xs wphfc-text-gray-500">
+            {description}
+          </p>
+        )}
+      </div>
+    </div>
+    {children}
+  </div>
+);
+
+const FieldRow = ({ label, required, labelWidth = "sm:wphfc-w-32", children }) => (
+  <div className="wphfc-flex wphfc-flex-col sm:wphfc-flex-row sm:wphfc-items-center wphfc-gap-1 sm:wphfc-gap-3">
+    <label
+      className={`wphfc-text-sm wphfc-font-medium wphfc-text-gray-700 ${labelWidth} wphfc-shrink-0`}>
+      {label}
+      {required && <span className="wphfc-ml-1 wphfc-text-red-500">*</span>}
+    </label>
+    <div className="wphfc-flex-1 wphfc-min-w-0">{children}</div>
+  </div>
+);
 
 const WPHFC_HookModal = ({
   selectedFormId,
@@ -14,50 +126,19 @@ const WPHFC_HookModal = ({
   onClose,
   activeHook,
   formName,
-  CurrentFields,
+  savedFields,
 }) => {
   const [selectedHook, setSelectedHook] = useState("");
-  const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [formFields, setFormFields] = useState([]);
   const [fieldMappings, setFieldMappings] = useState({});
   const [openDropdown, setOpenDropdown] = useState(null);
-  const [isHookDropdownOpen, setIsHookDropdownOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const [autoCountryCode, setAutoCountryCode] = useState("");
-  const [isFetchingCountryCode, setIsFetchingCountryCode] = useState(false);
-  const [templateModal, setTemplateModal] = useState(false);
   const [templates, setTemplates] = useState([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [templateSettings, setTemplateSettings] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [templateSearch, setTemplateSearch] = useState("");
   const [paramMappings, setParamMappings] = useState({});
-
-  // filteredTemplates FIRST
-  const filteredTemplates = templates.filter((t) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      t.template_name?.toLowerCase().includes(query) ||
-      t.category?.toLowerCase().includes(query) ||
-      t.language?.toLowerCase().includes(query)
-    );
-  });
-
-  // approvedTemplates and totalPages AFTER filteredTemplates
-  const approvedTemplates = filteredTemplates.filter(
-    (t) => t.status === "approved",
-  );
-  const totalPages = Math.ceil(approvedTemplates.length / ITEMS_PER_PAGE);
-
-  // Reset page when search changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
-
-  const hookDropdownRef = useRef(null);
-  const fieldDropdownRefs = useRef({});
 
   const fieldLabelToKey = {
     "First Name": "first_name",
@@ -72,6 +153,17 @@ const WPHFC_HookModal = ({
     Object.entries(fieldLabelToKey).map(([label, key]) => [key, label]),
   );
 
+  const approvedTemplates = templates.filter((t) => t.status === "approved");
+  const searchedTemplates = approvedTemplates.filter((t) => {
+    const query = templateSearch.toLowerCase();
+    return (
+      t.template_name?.toLowerCase().includes(query) ||
+      t.category?.toLowerCase().includes(query) ||
+      t.language?.toLowerCase().includes(query)
+    );
+  });
+  const templateParams = selectedTemplate?.total_params || [];
+
   const notify = (message, type = "success") => {
     toast[type](message, {
       position: "top-right",
@@ -83,53 +175,19 @@ const WPHFC_HookModal = ({
     });
   };
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        hookDropdownRef.current &&
-        !hookDropdownRef.current.contains(event.target)
-      ) {
-        setIsHookDropdownOpen(false);
-      }
-      if (openDropdown) {
-        const currentRef = fieldDropdownRefs.current[openDropdown];
-        if (currentRef && !currentRef.contains(event.target)) {
-          setOpenDropdown(null);
-        }
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isHookDropdownOpen, openDropdown]);
+  // Only one dropdown can be open at a time
+  const dropdownState = (name) => ({
+    isOpen: openDropdown === name,
+    setIsOpen: (open) => setOpenDropdown(open ? name : null),
+  });
 
   useEffect(() => {
     getFormFields(selectedFormId, formType);
+    loadTemplates();
   }, [selectedFormId, formType]);
 
-  // Once templates are loaded, replace partial pre-selected template with full object
+  // Load saved mappings keyed by display label; fields not shown here are saved back unchanged
   useEffect(() => {
-    if (
-      templates.length > 0 &&
-      selectedTemplate?.template_id &&
-      !selectedTemplate?.body
-    ) {
-      const fullTemplate = templates.find(
-        (t) => t.template_id === selectedTemplate.template_id,
-      );
-      if (fullTemplate) {
-        setSelectedTemplate(fullTemplate);
-      }
-    }
-  }, [templates]);
-
-  /*
-   *    On component mount or when selectedFormId changes, we check if there are saved field mappings for this form in CurrentFields.
-   *    If there are, we parse them and convert the stored keys to display labels using fieldKeyToLabel mapping before setting them in state.
-   *    This ensures that when the user opens the modal for an already configured form, they see their previous mappings correctly.
-   */
-  useEffect(() => {
-    const formKey = String(selectedFormId);
-    const savedFields = CurrentFields[formKey];
     if (savedFields) {
       try {
         const parsedFields =
@@ -150,7 +208,33 @@ const WPHFC_HookModal = ({
         console.error("Error parsing saved fields:", err);
       }
     }
-  }, [CurrentFields, selectedFormId]);
+  }, [savedFields]);
+
+  useEffect(() => {
+    const availableHooks = getAvailableHooks(formType);
+    if (activeHook && availableHooks.some((h) => h.value === activeHook)) {
+      setSelectedHook(activeHook);
+    } else if (availableHooks.length > 0) {
+      setSelectedHook(availableHooks[0].value);
+    }
+  }, [activeHook, formType]);
+
+  // Lock page scroll behind the modal while it is open
+  useEffect(() => {
+    document.body.classList.add("wphfc-modal-open");
+    return () => document.body.classList.remove("wphfc-modal-open");
+  }, []);
+
+  // Escape closes an open dropdown first, then the modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key !== "Escape" || isSaving) return;
+      if (openDropdown) setOpenDropdown(null);
+      else handleClose(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [openDropdown, isSaving]);
 
   const getAvailableHooks = (formType) => {
     const hooks = {
@@ -185,15 +269,6 @@ const WPHFC_HookModal = ({
     return hooks[formType] || [];
   };
 
-  const getAvilableFields = [
-    "First Name",
-    "Last Name",
-    "Mobile",
-    "Country Code",
-    "Birthday",
-    "Tags",
-  ];
-
   const getFormFields = async (formId, formType) => {
     try {
       const response = await fetch(
@@ -220,8 +295,7 @@ const WPHFC_HookModal = ({
     }
   };
 
-  const getTemplate = async () => {
-    setIsLoadingTemplates(true);
+  const fetchTemplates = async () => {
     try {
       const response = await fetch(
         `${happileeConnect.rest_url}fetch-template-messages`,
@@ -234,267 +308,18 @@ const WPHFC_HookModal = ({
           credentials: "same-origin",
         },
       );
-      const data = await response.json();
-      if (response.ok && data.success) {
-        setTemplates(data.template_messages.data);
-      } else {
-        console.error("Failed to fetch templates:", data);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && Array.isArray(data.template_messages?.data)) {
+          return data.template_messages.data;
+        }
       }
     } catch (error) {
-      console.error("Error fetching templates:", error);
-    } finally {
-      setIsLoadingTemplates(false);
+      console.error("Error fetching template messages:", error);
     }
+    return [];
   };
 
-  const toggleDropdown = (fieldName) => {
-    setOpenDropdown(openDropdown === fieldName ? null : fieldName);
-  };
-
-  useEffect(() => {
-    const availableHooks = getAvailableHooks(formType);
-    if (activeHook && availableHooks.some((h) => h.value === activeHook)) {
-      setSelectedHook(activeHook);
-    } else if (availableHooks.length > 0) {
-      setSelectedHook(availableHooks[0].value);
-    }
-  }, [activeHook, formType]);
-
-  const handleClose = (shouldRefresh) => {
-    setIsClosing(true);
-    setTimeout(() => {
-      onClose(shouldRefresh);
-    }, 300);
-  };
-
-  const handleHookSelect = (hookValue) => {
-    setSelectedHook(hookValue);
-    setIsHookDropdownOpen(false);
-    setError("");
-  };
-
-  const getSelectedHookLabel = () => {
-    const availableHooks = getAvailableHooks(formType);
-    const hook = availableHooks.find((h) => h.value === selectedHook);
-    return hook ? hook.label : "Please Select the Hook";
-  };
-
-  const handleFieldMapping = (happileeField, formField) => {
-    let fieldValue = null;
-    if (formField) {
-      switch (formType) {
-        case "wpforms":
-          fieldValue = formField.name;
-          break;
-        case "cf7":
-          fieldValue = formField.name;
-          break;
-        case "ninja_forms":
-          fieldValue = formField.name;
-          break;
-        case "forminator":
-          fieldValue = formField.id || formField.name;
-          break;
-        default:
-          fieldValue = formField.name || formField.id;
-      }
-    }
-    setFieldMappings((prev) => ({ ...prev, [happileeField]: fieldValue }));
-    setOpenDropdown(null);
-  };
-
-  const getMappedFieldLabel = (happileeField) => {
-    const mappedValue = fieldMappings[happileeField];
-    if (
-      happileeField === "Country Code" &&
-      (!mappedValue || mappedValue === "country-code")
-    ) {
-      if (isFetchingCountryCode) return "Detecting...";
-      if (autoCountryCode) return `Auto: ${autoCountryCode}`;
-      return "Country Code";
-    }
-    if (!mappedValue) return happileeField;
-    const formField = formFields.find((f) => {
-      switch (formType) {
-        case "wpforms":
-          return (f.id || f.name) === mappedValue;
-        case "cf7":
-          return f.name === mappedValue;
-        case "ninja_forms":
-          return f.name === mappedValue;
-        case "forminator":
-          return (f.id || f.name) === mappedValue;
-        default:
-          return (f.name || f.id) === mappedValue;
-      }
-    });
-    return formField ? formField.label || formField.name : mappedValue;
-  };
-
-  const isFieldSelected = (happileeField, formField) => {
-    const mappedValue = fieldMappings[happileeField];
-    if (!mappedValue || mappedValue === "country-code") return false;
-    switch (formType) {
-      case "wpforms":
-        return mappedValue === (formField.id || formField.name);
-      case "cf7":
-        return mappedValue === formField.name;
-      case "ninja_forms":
-        return mappedValue === formField.name;
-      case "forminator":
-        return mappedValue === (formField.id || formField.name);
-      default:
-        return mappedValue === (formField.name || formField.id);
-    }
-  };
-
-  useEffect(() => {
-    fetchCountryCodeFromIP();
-  }, []);
-
-  const fetchCountryCodeFromIP = async () => {
-    setIsFetchingCountryCode(true);
-    try {
-      const response = await fetch("https://ipapi.co/json/");
-      const data = await response.json();
-      if (data && data.country_calling_code) {
-        setAutoCountryCode(data.country_calling_code);
-      }
-    } catch (error) {
-      console.error("Failed to fetch country code from IP:", error);
-      setAutoCountryCode("+1");
-    } finally {
-      setIsFetchingCountryCode(false);
-    }
-  };
-
-  /*─────────────── Save before next button logic ───────────────*/
-  const saveBeforeNext = async () => {
-    if (!selectedHook) {
-      setError("Please select a hook");
-      return false;
-    }
-
-    if (!fieldMappings["Mobile"]) {
-      notify(
-        "Phone field is required. Settings cannot be saved without mapping the Mobile field.",
-        "error",
-      );
-      return false;
-    }
-
-    setIsSaving(true);
-    setError("");
-
-    const keyedFieldMappings = {};
-    Object.entries(fieldMappings).forEach(([displayLabel, formFieldValue]) => {
-      if (formFieldValue !== null && formFieldValue !== undefined) {
-        const storageKey = fieldLabelToKey[displayLabel] || displayLabel;
-        keyedFieldMappings[storageKey] = formFieldValue;
-      }
-    });
-
-    if (!keyedFieldMappings["country_code"]) {
-      keyedFieldMappings["country_code"] = "country-code";
-    }
-
-    try {
-      const response = await fetch(
-        `${happileeConnect.rest_url}save-form-settings`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-WP-Nonce": happileeConnect.happfoco_nonce,
-          },
-          body: JSON.stringify({
-            form_id: String(selectedFormId),
-            form_name: formName || "",
-            form_type: formType,
-            active_hook: selectedHook,
-            is_enabled: 1,
-            form_field: keyedFieldMappings,
-          }),
-          credentials: "same-origin",
-        },
-      );
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        notify("Settings saved successfully!", "success");
-        return true; //success to handleNext
-      } else {
-        notify(data.message || "Failed to save hook", "error");
-        return false;
-      }
-    } catch (error) {
-      notify("An error occurred while saving the hook", "error");
-      return false;
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  /*─────────────── Save Template Settings button logic ───────────────*/
-  const handleTemplateSettingsSave = async () => {
-    if (!selectedTemplate) {
-      notify("Please select a template first.", "error");
-      return;
-    }
-
-    // ← Validate all template params are mapped
-    const params = selectedTemplate?.total_params || [];
-    const emptyParams = params.filter(
-      (param) => !paramMappings[param] || paramMappings[param] === "",
-    );
-
-    if (emptyParams.length > 0) {
-      notify(
-        `Please map all template parameters. Missing: ${emptyParams.map((p) => `{{${p}}}`).join(", ")}`,
-        "error",
-      );
-      return;
-    }
-
-    setIsSaving(true);
-
-    try {
-      const response = await fetch(
-        `${happileeConnect.rest_url}save-template-settings`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-WP-Nonce": happileeConnect.happfoco_nonce,
-          },
-          body: JSON.stringify({
-            form_id: String(selectedFormId),
-            form_type: formType,
-            template_id: selectedTemplate.template_id,
-            template_name: selectedTemplate.template_name,
-            template_type: selectedTemplate.template_type || "",
-            param_mappings: paramMappings,
-          }),
-          credentials: "same-origin",
-        },
-      );
-
-      const data = await response.json();
-      if (response.ok && data.success) {
-        notify("Template settings saved successfully!", "success");
-        setTimeout(() => handleClose(true), 600);
-      } else {
-        notify(data.message || "Failed to save template settings.", "error");
-      }
-    } catch (error) {
-      notify("An error occurred while saving.", "error");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  /*─────────────── Get saved Template Settings before Template modal ───────────────*/
   const getSavedTemplateSettings = async () => {
     try {
       const response = await fetch(
@@ -519,47 +344,192 @@ const WPHFC_HookModal = ({
     }
   };
 
-  const handleNext = async () => {
-    const saved = await saveBeforeNext();
-    if (!saved) return;
-
-    // Fetch saved template settings and templates in parallel
-    const [savedSettings] = await Promise.all([
+  // Load the template list and pre-select this form's saved template + param mappings.
+  // The list only holds "wp_" templates, so a saved template outside it is not pre-selected.
+  const loadTemplates = async () => {
+    setIsLoadingTemplates(true);
+    const [templateList, savedSettings] = await Promise.all([
+      fetchTemplates(),
       getSavedTemplateSettings(),
-      getTemplate(),
     ]);
+    setTemplates(templateList);
 
-    if (savedSettings) {
-      // Pre-select the saved template
-      setSelectedTemplate({
-        template_id: savedSettings.template_id,
-        template_name: savedSettings.template_name,
-        template_type: savedSettings.template_type,
-      });
+    const savedTemplate = savedSettings?.template_id
+      ? templateList.find(
+          (t) => String(t.template_id) === String(savedSettings.template_id),
+        )
+      : null;
 
-      // Pre-populate param mappings
+    if (savedTemplate) {
+      setSelectedTemplate(savedTemplate);
       try {
         const parsedMappings =
           typeof savedSettings.param_mappings === "string"
             ? JSON.parse(savedSettings.param_mappings)
             : savedSettings.param_mappings;
-
         if (parsedMappings && typeof parsedMappings === "object") {
-          setParamMappings(parsedMappings); // ← pre-fills dropdowns in TemplateSettings
+          setParamMappings(parsedMappings);
         }
       } catch (e) {
         console.error("Failed to parse saved param_mappings:", e);
       }
     }
-
-    setTemplateModal(true);
+    setIsLoadingTemplates(false);
   };
 
-  const handleTemplateSelect = () => {
-    setTemplateSettings(true);
+  // Value stored for a form field; Forminator keys submissions by field id
+  const getFormFieldValue = (formField) =>
+    formType === "forminator"
+      ? formField.id || formField.name
+      : formField.name || formField.id;
+
+  const getFormFieldLabel = (value) => {
+    if (!value) return "";
+    const formField = formFields.find((f) => getFormFieldValue(f) === value);
+    return formField ? formField.label || formField.name : value;
+  };
+
+  const handleClose = (shouldRefresh) => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose(shouldRefresh);
+    }, 300);
+  };
+
+  const handleFieldMapping = (happileeField, formField) => {
+    setFieldMappings((prev) => ({
+      ...prev,
+      [happileeField]: formField ? getFormFieldValue(formField) : null,
+    }));
+    setOpenDropdown(null);
+  };
+
+  // A null template is the default "Select a Template" option, which clears the selection
+  const handleTemplateSelect = (template) => {
+    if (
+      String(selectedTemplate?.template_id) !== String(template?.template_id)
+    ) {
+      setParamMappings({});
+    }
+    setSelectedTemplate(template);
+    setTemplateSearch("");
+    setOpenDropdown(null);
+  };
+
+  const handleParamMapping = (param, formField) => {
+    setParamMappings((prev) => ({
+      ...prev,
+      [param]: formField ? getFormFieldValue(formField) : "",
+    }));
+    setOpenDropdown(null);
+  };
+
+  // Save form settings, then the template settings
+  const handleSave = async () => {
+    if (!selectedHook) {
+      notify("Please select a hook.", "error");
+      return;
+    }
+    if (!selectedTemplate) {
+      notify("Please select a template.", "error");
+      return;
+    }
+    if (!fieldMappings["Mobile"]) {
+      notify(
+        "Please select the form field that holds the mobile number.",
+        "error",
+      );
+      return;
+    }
+    const emptyParams = templateParams.filter((param) => !paramMappings[param]);
+    if (emptyParams.length > 0) {
+      notify(
+        `Please map all template parameters. Missing: ${emptyParams.map((p) => `{{${p}}}`).join(", ")}`,
+        "error",
+      );
+      return;
+    }
+
+    const keyedFieldMappings = {};
+    Object.entries(fieldMappings).forEach(([displayLabel, formFieldValue]) => {
+      if (formFieldValue !== null && formFieldValue !== undefined) {
+        const storageKey = fieldLabelToKey[displayLabel] || displayLabel;
+        keyedFieldMappings[storageKey] = formFieldValue;
+      }
+    });
+    if (!keyedFieldMappings["country_code"]) {
+      keyedFieldMappings["country_code"] = "country-code";
+    }
+
+    // Returns null on success, otherwise the error message from the API
+    const post = async (endpoint, body) => {
+      const response = await fetch(`${happileeConnect.rest_url}${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-WP-Nonce": happileeConnect.happfoco_nonce,
+        },
+        body: JSON.stringify(body),
+        credentials: "same-origin",
+      });
+      const data = await response.json();
+      return response.ok && data.success ? null : data.message || "";
+    };
+
+    setIsSaving(true);
+    try {
+      const formError = await post("save-form-settings", {
+        form_id: String(selectedFormId),
+        form_name: formName || "",
+        form_type: formType,
+        active_hook: selectedHook,
+        is_enabled: 1,
+        form_field: keyedFieldMappings,
+      });
+      if (formError !== null) {
+        notify(formError || "Failed to save form settings.", "error");
+        return;
+      }
+
+      const templateError = await post("save-template-settings", {
+        form_id: String(selectedFormId),
+        form_type: formType,
+        template_id: selectedTemplate.template_id,
+        template_name: selectedTemplate.template_name,
+        template_type: selectedTemplate.template_type || "",
+        param_mappings: paramMappings,
+      });
+      if (templateError !== null) {
+        notify(templateError || "Failed to save template settings.", "error");
+        return;
+      }
+
+      notify("Settings saved successfully!", "success");
+      setTimeout(() => handleClose(true), 600);
+    } catch (error) {
+      notify("An error occurred while saving.", "error");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const availableHooks = getAvailableHooks(formType);
+  const selectedHookLabel =
+    availableHooks.find((h) => h.value === selectedHook)?.label || "";
+
+  const formFieldOptions = (isSelected, onPick) =>
+    formFields.length > 0 ? (
+      formFields.map((formField) => (
+        <DropdownOption
+          key={formField.id || formField.name}
+          selected={isSelected(getFormFieldValue(formField))}
+          onClick={() => onPick(formField)}>
+          {formField.label || formField.name}
+        </DropdownOption>
+      ))
+    ) : (
+      <EmptyOption>No fields available</EmptyOption>
+    );
 
   return (
     <>
@@ -580,406 +550,295 @@ const WPHFC_HookModal = ({
         document.body,
       )}
       <div
-        className={`wphfc-modal-backdrop wphfc-fixed wphfc-inset-0 wphfc-flex wphfc-items-center wphfc-justify-center wphfc-bg-black/50 wphfc-z-50 ${isClosing ? "wphfc-opacity-0" : "wphfc-opacity-100"}`}
+        className={`wphfc-modal-backdrop wphfc-fixed wphfc-inset-0 wphfc-flex wphfc-items-center wphfc-justify-center wphfc-bg-black/50 wphfc-transition-opacity wphfc-duration-300 ${isClosing ? "wphfc-opacity-0" : "wphfc-opacity-100"}`}
         style={{ zIndex: 100000 }}
         onClick={(e) => {
           if (e.target === e.currentTarget && !isSaving) handleClose(false);
         }}>
         <div
-          className={`${templateModal ? "wphfc-max-w-5xl" : "wphfc-max-w-md"} wphfc-w-full wphfc-mx-4 wphfc-bg-white wphfc-p-6 wphfc-rounded-lg wphfc-shadow-lg wphfc-transition-transform wphfc-duration-300 ${
+          className={`wphfc-max-w-5xl wphfc-w-full wphfc-mx-4 wphfc-bg-white wphfc-rounded-xl wphfc-shadow-2xl wphfc-flex wphfc-flex-col wphfc-overflow-hidden wphfc-transition-transform wphfc-duration-300 ${
             isClosing
               ? "wphfc-scale-95 wphfc-opacity-0"
               : "wphfc-scale-100 wphfc-opacity-100"
-          }`}>
-          {/* ─── Header ─── */}
-          <div className="wphfc-flex wphfc-justify-between wphfc-items-center wphfc-mb-4">
-            <h3 className="wphfc-text-lg wphfc-text-primary wphfc-font-semibold wphfc-m-0">
-              {templateSettings
-                ? `Template Settings`
-                : templateModal
-                  ? `Select Template for Form ID: ${selectedFormId}`
-                  : `Select Hook for Form ID: ${selectedFormId}`}
-            </h3>
-            <div className="wphfc-flex wphfc-gap-2">
-              {templateModal && !templateSettings && (
-                <WPHFC_TemplateSearch
-                  searchQuery={searchQuery}
-                  onSearch={setSearchQuery}
+          }`}
+          style={{ maxHeight: "90vh" }}>
+          {/* Header */}
+          <div className="wphfc-flex wphfc-justify-between wphfc-items-center wphfc-gap-4 wphfc-px-6 wphfc-py-4 wphfc-border-0 wphfc-border-b wphfc-border-solid wphfc-border-gray-200">
+            <div className="wphfc-min-w-0">
+              <h3 className="wphfc-text-lg wphfc-text-primary wphfc-font-semibold wphfc-m-0 wphfc-truncate">
+                Configure {formName || "Form"}
+              </h3>
+              <p className="wphfc-m-0 wphfc-mt-0.5 wphfc-text-xs wphfc-text-gray-500">
+                Form ID: {selectedFormId}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="wphfc-modal-close wphfc-p-1.5 wphfc-rounded-md hover:wphfc-bg-gray-100 wphfc-transition-colors"
+              onClick={() => handleClose(false)}
+              disabled={isSaving}
+              aria-label="Close">
+              <svg
+                className="wphfc-w-5 wphfc-h-5 wphfc-text-gray-500"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none">
+                <path
+                  d="M17 7L7 17M7 7L17 17"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 />
-              )}
-              <button
-                className="wphfc-modal-close wphfc-p-1 wphfc-bg-transparent wphfc-border-none wphfc-cursor-pointer"
-                onClick={() => handleClose(false)}
-                disabled={isSaving}>
-                <svg
-                  className="wphfc-w-5 wphfc-h-5"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none">
-                  <path
-                    d="M17 7L7 17M7 7L17 17"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+              </svg>
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="wphfc-flex-1 wphfc-overflow-y-auto wphfc-bg-gray-50 wphfc-px-6 wphfc-py-5">
+            <div className="wphfc-flex wphfc-flex-col lg:wphfc-flex-row wphfc-gap-5">
+              {/* Left: Settings */}
+              <div className="wphfc-flex-1 wphfc-min-w-0 wphfc-flex wphfc-flex-col wphfc-gap-4">
+                <Section
+                  step={1}
+                  title="Trigger Hook"
+                  description="Choose when the action runs in the form submission process.">
+                  <Dropdown
+                    {...dropdownState("hook")}
+                    valueLabel={selectedHookLabel}
+                    placeholder="Please Select the Hook"
+                    disabled={isSaving}>
+                    {availableHooks.map((hook) => (
+                      <DropdownOption
+                        key={hook.value}
+                        selected={selectedHook === hook.value}
+                        onClick={() => {
+                          setSelectedHook(hook.value);
+                          setOpenDropdown(null);
+                        }}>
+                        {hook.label}
+                      </DropdownOption>
+                    ))}
+                  </Dropdown>
+                </Section>
+
+                <Section
+                  step={2}
+                  title="Happilee Field Mapping"
+                  description="Pick the approved WhatsApp template to send and fill it from your form fields.">
+                  <div className="wphfc-flex wphfc-flex-col wphfc-gap-3">
+                    <FieldRow label="Template" required>
+                      <Dropdown
+                        {...dropdownState("template")}
+                        valueLabel={selectedTemplate?.template_name}
+                        placeholder={
+                          isLoadingTemplates
+                            ? "Loading templates..."
+                            : "Select a Template"
+                        }
+                        disabled={isSaving || isLoadingTemplates}
+                        header={
+                          approvedTemplates.length > 5 && (
+                            <div className="wphfc-p-2 wphfc-border-0 wphfc-border-b wphfc-border-solid wphfc-border-gray-100">
+                              <input
+                                type="text"
+                                autoFocus
+                                placeholder="Search templates..."
+                                value={templateSearch}
+                                onChange={(e) =>
+                                  setTemplateSearch(e.target.value)
+                                }
+                                className="wphfc-w-full wphfc-px-3 wphfc-py-1.5 wphfc-text-sm wphfc-border wphfc-border-solid wphfc-border-gray-300 wphfc-rounded-md"
+                                style={{ outline: "none", boxShadow: "none" }}
+                              />
+                            </div>
+                          )
+                        }>
+                        <DropdownOption
+                          muted
+                          selected={!selectedTemplate}
+                          onClick={() => handleTemplateSelect(null)}>
+                          -- Select a Template --
+                        </DropdownOption>
+                        {searchedTemplates.length > 0 ? (
+                          searchedTemplates.map((template) => (
+                            <DropdownOption
+                              key={template.template_id}
+                              selected={
+                                String(selectedTemplate?.template_id) ===
+                                String(template.template_id)
+                              }
+                              onClick={() => handleTemplateSelect(template)}>
+                              <span className="wphfc-flex wphfc-items-center wphfc-justify-between wphfc-gap-2">
+                                <span className="wphfc-truncate">
+                                  {template.template_name}
+                                </span>
+                                {template.category && (
+                                  <span className="wphfc-shrink-0 wphfc-text-[10px] wphfc-uppercase wphfc-tracking-wide wphfc-px-1.5 wphfc-py-0.5 wphfc-rounded wphfc-bg-gray-100 wphfc-text-gray-500">
+                                    {template.category}
+                                  </span>
+                                )}
+                              </span>
+                            </DropdownOption>
+                          ))
+                        ) : (
+                          <EmptyOption>
+                            {approvedTemplates.length > 0
+                              ? "No templates match your search."
+                              : 'No templates available. Create an approved template whose name starts with "wp_" in your Happilee account.'}
+                          </EmptyOption>
+                        )}
+                      </Dropdown>
+                    </FieldRow>
+
+                    <FieldRow label="Mobile" required>
+                      <Dropdown
+                        {...dropdownState("mobile")}
+                        valueLabel={getFormFieldLabel(fieldMappings["Mobile"])}
+                        placeholder="Select the phone number field"
+                        disabled={isSaving}>
+                        {formFieldOptions(
+                          (value) => fieldMappings["Mobile"] === value,
+                          (formField) =>
+                            handleFieldMapping("Mobile", formField),
+                        )}
+                      </Dropdown>
+                    </FieldRow>
+
+                    <FieldRow label="Tags">
+                      <input
+                        type="text"
+                        className="wphfc-text-input"
+                        placeholder="Enter tags (comma separated)"
+                        value={fieldMappings["Tags"] || ""}
+                        onChange={(e) =>
+                          setFieldMappings((prev) => ({
+                            ...prev,
+                            Tags: e.target.value,
+                          }))
+                        }
+                        disabled={isSaving}
+                      />
+                    </FieldRow>
+                  </div>
+
+                  {selectedTemplate && (
+                    <div className="wphfc-mt-4 wphfc-pt-4 wphfc-border-0 wphfc-border-t wphfc-border-dashed wphfc-border-gray-200">
+                      <p className="wphfc-m-0 wphfc-mb-3 wphfc-text-xs wphfc-font-semibold wphfc-uppercase wphfc-tracking-wide wphfc-text-gray-500">
+                        Parameter Mapping
+                      </p>
+                      {templateParams.length > 0 ? (
+                        <div className="wphfc-flex wphfc-flex-col wphfc-gap-3">
+                          {templateParams.map((param) => (
+                            <FieldRow
+                              key={param}
+                              labelWidth="sm:wphfc-w-48"
+                              label={
+                                <span
+                                  className="wphfc-inline-block wphfc-max-w-full wphfc-break-all wphfc-text-xs wphfc-px-2 wphfc-py-1 wphfc-rounded wphfc-font-mono"
+                                  style={{
+                                    background: "#fef9c3",
+                                    color: "#854d0e",
+                                    border: "1px solid #fde047",
+                                  }}>
+                                  {`{{${param}}}`}
+                                </span>
+                              }>
+                              <Dropdown
+                                {...dropdownState(`param:${param}`)}
+                                valueLabel={getFormFieldLabel(
+                                  paramMappings[param],
+                                )}
+                                placeholder="Select a form field"
+                                disabled={isSaving}>
+                                <DropdownOption
+                                  muted
+                                  onClick={() =>
+                                    handleParamMapping(param, null)
+                                  }>
+                                  -- None --
+                                </DropdownOption>
+                                {formFieldOptions(
+                                  (value) => paramMappings[param] === value,
+                                  (formField) =>
+                                    handleParamMapping(param, formField),
+                                )}
+                              </Dropdown>
+                            </FieldRow>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="wphfc-m-0 wphfc-text-sm wphfc-text-gray-500 wphfc-italic">
+                          This template has no dynamic parameters.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </Section>
+              </div>
+
+              {/* Right: Live Preview */}
+              <div className="lg:wphfc-w-[320px] wphfc-shrink-0">
+                <div className="lg:wphfc-sticky lg:wphfc-top-0">
+                  <div className="wphfc-flex wphfc-items-center wphfc-justify-between wphfc-mb-2">
+                    <p className="wphfc-m-0 wphfc-text-sm wphfc-font-semibold wphfc-text-gray-800">
+                      Live Preview
+                    </p>
+                    {selectedTemplate?.language && (
+                      <span className="wphfc-text-xs wphfc-px-2 wphfc-py-0.5 wphfc-rounded-full wphfc-bg-gray-200 wphfc-text-gray-600">
+                        {selectedTemplate.language}
+                      </span>
+                    )}
+                  </div>
+                  <WPHFC_WhatsappPreview
+                    template={selectedTemplate}
+                    getParamLabel={(param) =>
+                      getFormFieldLabel(paramMappings[param])
+                    }
                   />
-                </svg>
-              </button>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* ─── Template List ─── */}
-          {templateModal && !templateSettings && (
-            <WPHFC_TemplateListing
-              templates={filteredTemplates}
-              isLoadingTemplates={isLoadingTemplates}
-              selectedTemplate={selectedTemplate}
-              onSelect={setSelectedTemplate}
-              currentPage={currentPage}
-              selectedFormId={selectedFormId}
-              formType={formType}
-            />
-          )}
-
-          {/* ─── Template Settings ─── */}
-          {templateSettings && selectedTemplate && (
-            <WPHFC_TemplateSettings
-              selectedTemplate={selectedTemplate}
-              formFields={formFields}
-              fieldMappings={fieldMappings}
-              formType={formType}
-              savedParamMappings={paramMappings}
-              onParamMappingsChange={setParamMappings}
-            />
-          )}
-
-          {/* ─── Hook Dropdown ─── */}
-          {!templateModal && (
-            <div className="wphfc-mb-4 wphfc-relative" ref={hookDropdownRef}>
-              <label className="wphfc-block wphfc-text-sm wphfc-font-medium wphfc-mb-2 wphfc-text-gray-700">
-                Form Name: <strong>{formName}</strong>
-              </label>
-              <button
-                type="button"
-                className="wphfc-w-full wphfc-items-center wphfc-bg-white wphfc-flex wphfc-justify-between wphfc-modal-select wphfc-p-2 wphfc-select wphfc-rounded-md"
-                onClick={() => setIsHookDropdownOpen(!isHookDropdownOpen)}
-                disabled={isSaving}>
-                <span
-                  className={
-                    selectedHook ? "wphfc-text-gray-900" : "wphfc-text-gray-500"
-                  }>
-                  {getSelectedHookLabel()}
-                </span>
+          {/* Footer */}
+          <div className="wphfc-flex wphfc-justify-end wphfc-items-center wphfc-gap-3 wphfc-px-6 wphfc-py-4 wphfc-border-0 wphfc-border-t wphfc-border-solid wphfc-border-gray-200 wphfc-bg-white">
+            <button
+              type="button"
+              className="wphfc-cancel-modal wphfc-px-4 wphfc-py-2 wphfc-text-sm wphfc-font-medium wphfc-bg-white wphfc-text-gray-700 wphfc-border wphfc-border-solid wphfc-border-gray-300 wphfc-rounded-lg hover:wphfc-bg-gray-50 disabled:wphfc-opacity-50 disabled:wphfc-cursor-not-allowed wphfc-transition-colors"
+              onClick={() => handleClose(false)}
+              disabled={isSaving}>
+              CANCEL
+            </button>
+            <button
+              type="button"
+              className="wphfc-save-modal wphfc-flex wphfc-items-center wphfc-gap-2 wphfc-px-5 wphfc-py-2 wphfc-text-sm wphfc-font-medium wphfc-bg-primary wphfc-text-white wphfc-border-none wphfc-rounded-lg hover:wphfc-bg-primary/80 disabled:wphfc-opacity-50 disabled:wphfc-cursor-not-allowed wphfc-transition-colors"
+              onClick={handleSave}
+              disabled={isSaving || isLoadingTemplates}>
+              {isSaving && (
                 <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
+                  className="wphfc-animate-spin wphfc-h-4 wphfc-w-4 wphfc-text-white"
                   xmlns="http://www.w3.org/2000/svg"
-                  className="wphfc-transition-transform">
-                  <path
-                    d="M6 9L12 15L18 9"
+                  fill="none"
+                  viewBox="0 0 24 24">
+                  <circle
+                    className="wphfc-opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
                     stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="wphfc-opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   />
                 </svg>
-              </button>
-              {isHookDropdownOpen && (
-                <ul className="wphfc-w-full wphfc-max-h-60 wphfc-bg-white wphfc-rounded-md wphfc-absolute wphfc-z-10 wphfc-shadow-xl wphfc-py-1 wphfc-mt-1 wphfc-border wphfc-border-gray-300 wphfc-overflow-y-auto">
-                  {availableHooks.map((hook) => (
-                    <li key={hook.value}>
-                      <button
-                        type="button"
-                        className={`wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-text-left wphfc-text-sm hover:wphfc-bg-blue-50 wphfc-cursor-pointer wphfc-border-none wphfc-bg-transparent ${
-                          selectedHook === hook.value
-                            ? "wphfc-bg-blue-100 wphfc-text-[#0B3966] wphfc-font-medium"
-                            : "wphfc-text-gray-700"
-                        }`}
-                        onClick={() => handleHookSelect(hook.value)}>
-                        {hook.label}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
               )}
-            </div>
-          )}
-
-          {/* ─── Error ─── */}
-          {!templateModal && error && (
-            <div className="wphfc-mb-4 wphfc-p-3 wphfc-bg-red-50 wphfc-border wphfc-border-red-200 wphfc-rounded-md">
-              <p className="wphfc-text-sm wphfc-text-red-600 wphfc-m-0">
-                {error}
-              </p>
-            </div>
-          )}
-
-          {/* ─── Note ─── */}
-          {!templateModal && (
-            <div className="wphfc-mb-4 wphfc-p-3 wphfc-bg-blue-50 wphfc-border wphfc-border-blue-200 wphfc-rounded-md">
-              <p className="wphfc-text-xs wphfc-text-gray-700 wphfc-m-0">
-                <strong>Note:</strong> Select the appropriate hook based on when
-                you want to trigger the action in the form submission process.
-              </p>
-            </div>
-          )}
-
-          {/* ─── Field Mapping ─── */}
-          {!templateModal && (
-            <div className="wphfc-field-mapping wphfc-mb-6 wphfc-pt-4 wphfc-border-t wphfc-border-gray-300">
-              <h3 className="wphfc-text-base wphfc-font-semibold wphfc-mb-4 wphfc-text-gray-800">
-                Happilee Field Mapping
-              </h3>
-              <div className="wphfc-space-y-3">
-                {getAvilableFields.map((field) => {
-                  if (field === "Tags") {
-                    return (
-                      <div
-                        key={field}
-                        className="wphfc-field-map-row wphfc-flex wphfc-items-center wphfc-gap-3">
-                        <label className="wphfc-text-sm wphfc-font-medium wphfc-text-gray-700 wphfc-w-32 wphfc-flex-shrink-0">
-                          {field}
-                        </label>
-                        <div className="wphfc-flex-1">
-                          <input
-                            type="text"
-                            className="wphfc-select wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-bg-white wphfc-border wphfc-border-gray-300 wphfc-text-sm wphfc-text-gray-700"
-                            style={{
-                              borderRadius: "6px",
-                              outline: "none",
-                              boxShadow: "none",
-                            }}
-                            placeholder="Enter tags (comma separated)"
-                            value={fieldMappings[field] || ""}
-                            onChange={(e) =>
-                              setFieldMappings((prev) => ({
-                                ...prev,
-                                [field]: e.target.value,
-                              }))
-                            }
-                          />
-                        </div>
-                      </div>
-                    );
-                  }
-                  return (
-                    <div
-                      key={field}
-                      className="wphfc-field-map-row wphfc-flex wphfc-items-center wphfc-gap-3">
-                      <label className="wphfc-text-sm wphfc-font-medium wphfc-text-gray-700 wphfc-w-32 wphfc-flex-shrink-0">
-                        {field}
-                      </label>
-                      <div
-                        className="wphfc-field-dropdown-container wphfc-flex-1 wphfc-relative"
-                        ref={(el) => (fieldDropdownRefs.current[field] = el)}>
-                        <button
-                          type="button"
-                          className="wphfc-select wphfc-flex wphfc-justify-between wphfc-items-center wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-bg-white wphfc-border wphfc-border-gray-300 wphfc-rounded-md wphfc-text-left wphfc-text-sm wphfc-text-gray-700 hover:wphfc-border-gray-400 focus:wphfc-outline-none focus:wphfc-ring-2 focus:wphfc-ring-blue-500 wphfc-cursor-pointer"
-                          onClick={() => toggleDropdown(field)}>
-                          <span
-                            className={
-                              fieldMappings[field]
-                                ? "wphfc-text-gray-900"
-                                : "wphfc-text-gray-500"
-                            }>
-                            {getMappedFieldLabel(field)}
-                          </span>
-                          <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                            className={`wphfc-transition-transform ${openDropdown === field ? "wphfc-rotate-180" : ""}`}>
-                            <path
-                              d="M6 9L12 15L18 9"
-                              stroke="currentColor"
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </button>
-                        {openDropdown === field && (
-                          <div className="wphfc-dropdown-menu wphfc-absolute wphfc-z-10 wphfc-w-full wphfc-mt-1 wphfc-bg-white wphfc-border wphfc-border-gray-300 wphfc-rounded-md wphfc-shadow-xl wphfc-max-h-60 wphfc-overflow-y-auto">
-                            <ul className="wphfc-py-1">
-                              <li>
-                                <button
-                                  type="button"
-                                  className="wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-text-left wphfc-text-sm wphfc-text-gray-500 hover:wphfc-bg-gray-100 wphfc-cursor-pointer wphfc-border-none wphfc-bg-transparent"
-                                  onClick={() =>
-                                    handleFieldMapping(field, null)
-                                  }>
-                                  -- None --
-                                </button>
-                              </li>
-                              {formFields.length > 0 ? (
-                                formFields.map((formField) => {
-                                  return (
-                                    <li key={formField.id || formField.name}>
-                                      <button
-                                        type="button"
-                                        className={`wphfc-w-full wphfc-px-3 wphfc-py-2 wphfc-text-left wphfc-text-sm hover:wphfc-bg-blue-50 wphfc-cursor-pointer wphfc-border-none wphfc-bg-transparent ${
-                                          isFieldSelected(field, formField)
-                                            ? "wphfc-bg-blue-100 wphfc-text-[#0B3966] wphfc-font-medium"
-                                            : "wphfc-text-gray-700"
-                                        }`}
-                                        onClick={() =>
-                                          handleFieldMapping(field, formField)
-                                        }>
-                                        {formField.label || formField.name}
-                                      </button>
-                                    </li>
-                                  );
-                                })
-                              ) : (
-                                <li className="wphfc-px-3 wphfc-py-2 wphfc-text-sm wphfc-text-gray-500 wphfc-italic">
-                                  No fields available
-                                </li>
-                              )}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* ─── Footer ─── */}
-          <div className="wphfc-flex wphfc-justify-between wphfc-items-center wphfc-gap-3">
-            {/* ─── Left: Pagination ─── */}
-            {templateModal && !templateSettings && totalPages > 1 ? (
-              <div className="wphfc-flex wphfc-items-center wphfc-gap-1">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="wphfc-px-2 wphfc-py-1 wphfc-text-xs wphfc-border wphfc-border-gray-300 wphfc-rounded wphfc-bg-white wphfc-cursor-pointer disabled:wphfc-opacity-40 disabled:wphfc-cursor-not-allowed hover:wphfc-bg-gray-50">
-                  ‹ Prev
-                </button>
-
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter(
-                    (page) =>
-                      page === 1 ||
-                      page === totalPages ||
-                      Math.abs(page - currentPage) <= 1,
-                  )
-                  .reduce((acc, page, idx, arr) => {
-                    if (idx > 0 && page - arr[idx - 1] > 1) acc.push("...");
-                    acc.push(page);
-                    return acc;
-                  }, [])
-                  .map((item, idx) =>
-                    item === "..." ? (
-                      <span
-                        key={`dots-${idx}`}
-                        className="wphfc-px-1 wphfc-text-xs wphfc-text-gray-400">
-                        ...
-                      </span>
-                    ) : (
-                      <button
-                        key={item}
-                        onClick={() => setCurrentPage(item)}
-                        className={`wphfc-px-2 wphfc-py-1 wphfc-text-xs wphfc-border wphfc-rounded wphfc-cursor-pointer wphfc-transition-colors ${
-                          currentPage === item
-                            ? "wphfc-bg-primary wphfc-text-white wphfc-border-primary"
-                            : "wphfc-border-gray-300 wphfc-bg-white hover:wphfc-bg-gray-50"
-                        }`}>
-                        {item}
-                      </button>
-                    ),
-                  )}
-
-                <button
-                  onClick={() =>
-                    setCurrentPage((p) => Math.min(p + 1, totalPages))
-                  }
-                  disabled={currentPage === totalPages}
-                  className="wphfc-px-2 wphfc-py-1 wphfc-text-xs wphfc-border wphfc-border-gray-300 wphfc-rounded wphfc-bg-white wphfc-cursor-pointer disabled:wphfc-opacity-40 disabled:wphfc-cursor-not-allowed hover:wphfc-bg-gray-50">
-                  Next ›
-                </button>
-              </div>
-            ) : (
-              <div />
-            )}
-
-            {/* ─── Right: Action Buttons ─── */}
-            <div className="wphfc-flex wphfc-gap-3">
-              <button
-                className="wphfc-cancel-modal wphfc-px-4 wphfc-py-2 wphfc-text-sm wphfc-font-medium wphfc-bg-red-600 wphfc-text-white wphfc-border-none wphfc-rounded-md wphfc-cursor-pointer hover:wphfc-bg-red-700 disabled:wphfc-opacity-50 disabled:wphfc-cursor-not-allowed wphfc-transition-colors"
-                onClick={() => {
-                  if (templateSettings) {
-                    setTemplateSettings(false);
-                  } else if (templateModal) {
-                    setTemplateModal(false);
-                    setSearchQuery("");
-                    setCurrentPage(1);
-                  } else {
-                    handleClose(false);
-                  }
-                }}
-                disabled={isSaving}>
-                {templateSettings || templateModal ? "BACK" : "CANCEL"}
-              </button>
-
-              {templateSettings ? (
-                <button
-                  className="wphfc-save-modal wphfc-px-4 wphfc-py-2 wphfc-text-sm wphfc-font-medium wphfc-bg-primary wphfc-text-white wphfc-border-none wphfc-rounded-md wphfc-cursor-pointer hover:wphfc-bg-primary/80 disabled:wphfc-opacity-50 disabled:wphfc-cursor-not-allowed wphfc-transition-colors"
-                  onClick={handleTemplateSettingsSave}>
-                  SAVE
-                </button>
-              ) : templateModal ? (
-                <button
-                  className="wphfc-save-modal wphfc-px-4 wphfc-py-2 wphfc-text-sm wphfc-font-medium wphfc-bg-primary wphfc-text-white wphfc-border-none wphfc-rounded-md wphfc-cursor-pointer hover:wphfc-bg-primary/80 disabled:wphfc-opacity-50 disabled:wphfc-cursor-not-allowed wphfc-transition-colors"
-                  disabled={!selectedTemplate}
-                  onClick={handleTemplateSelect}>
-                  Choose this Template
-                </button>
-              ) : (
-                <button
-                  className="wphfc-next-modal wphfc-bg-primary wphfc-py-[10px] wphfc-px-[24px] wphfc-text-sm wphfc-text-white wphfc-border-none wphfc-rounded-md wphfc-cursor-pointer wphfc-flex wphfc-gap-2 hover:bg-primary/80 disabled:wphfc-opacity-50 disabled:wphfc-cursor-not-allowed"
-                  onClick={handleNext}
-                  disabled={isLoadingTemplates || isSaving}>
-                  {isLoadingTemplates || isSaving ? (
-                    <>
-                      <svg
-                        className="wphfc-animate-spin wphfc-h-4 wphfc-w-4 wphfc-text-white"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24">
-                        <circle
-                          className="wphfc-opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="wphfc-opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        />
-                      </svg>
-                      {isSaving ? "SAVING..." : "LOADING..."}
-                    </>
-                  ) : (
-                    <>
-                      NEXT
-                      <span className="arrow-icon">
-                        <span>›</span>
-                      </span>
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
+              {isSaving ? "SAVING..." : "SAVE"}
+            </button>
           </div>
         </div>
       </div>

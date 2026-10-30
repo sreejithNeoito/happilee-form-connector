@@ -1,4 +1,9 @@
 <?php
+/**
+ * Plugin bootstrap: admin page, assets and class loading.
+ *
+ * @package Happilee_Forms_Connector
+ */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -6,8 +11,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 if ( ! class_exists( 'Happfoco_Main' ) ) {
 
+	/**
+	 * Main plugin class.
+	 */
 	class Happfoco_Main {
 
+		/**
+		 * Object cache group shared by the plugin.
+		 */
+		const CACHE_GROUP = 'happfoco';
+
+		/**
+		 * Singleton instance.
+		 *
+		 * @var Happfoco_Main|null
+		 */
 		private static $instance = null;
 
 		/**
@@ -32,7 +50,6 @@ if ( ! class_exists( 'Happfoco_Main' ) ) {
 			add_action( 'plugins_loaded', array( $this, 'load_api_class' ), 20 );
 			add_action( 'plugins_loaded', array( $this, 'init_operation_class' ), 20 );
 
-			// Add settings link.
 			add_filter(
 				'plugin_action_links_' . plugin_basename( HAPPILEE_FORMS_PLUGIN_FILE ),
 				array( $this, 'add_plugin_action_links' )
@@ -40,16 +57,22 @@ if ( ! class_exists( 'Happfoco_Main' ) ) {
 		}
 
 		/**
-		 * Ensure the plugin database table exists.
+		 * Ensure the plugin database tables exist.
 		 *
-		 * Runs on every plugins_loaded so the table is created automatically
-		 * after a manual database reset, a site migration, or a plugin update
-		 * that bypassed the activation hook.
+		 * Runs on admin requests, and on any request while the stored schema
+		 * version is out of date, so tables are created after an update or a
+		 * database reset without adding queries to every front-end page load.
 		 *
 		 * @return void
 		 */
 		public function maybe_create_table() {
 			require_once HAPPILEE_FORMS_PLUGIN_DIR . 'includes/class-hfc-db.php';
+
+			$is_current = version_compare( (string) get_option( 'happfoco_db_version', '0' ), Happfoco_DB::DB_VERSION, '>=' );
+			if ( $is_current && ! is_admin() ) {
+				return;
+			}
+
 			$db = new Happfoco_DB();
 			$db->happfoco_check_and_create_table();
 		}
@@ -113,7 +136,6 @@ if ( ! class_exists( 'Happfoco_Main' ) ) {
 		 * @return void
 		 */
 		public function happfoco_load_scripts( $hook ) {
-			// Only load on the plugin's settings page.
 			if ( 'settings_page_happilee-forms-connector' !== $hook ) {
 				return;
 			}
@@ -122,7 +144,7 @@ if ( ! class_exists( 'Happfoco_Main' ) ) {
 			$css_file = HAPPILEE_FORMS_PLUGIN_URL . 'assets/css/main.css';
 
 			if ( file_exists( HAPPILEE_FORMS_PLUGIN_DIR . 'assets/css/main.css' ) ) {
-				wp_enqueue_style( 'happfoco-backend-style', $css_file, array(), HAPPILEE_FORMS_VERSION );
+				wp_enqueue_style( 'happfoco-backend-style', $css_file, array(), HAPPILEE_FORMS_VERSION . '.' . filemtime( HAPPILEE_FORMS_PLUGIN_DIR . 'assets/css/main.css' ) );
 			}
 
 			if ( file_exists( HAPPILEE_FORMS_PLUGIN_DIR . 'assets/js/bundle.js' ) ) {
@@ -130,11 +152,10 @@ if ( ! class_exists( 'Happfoco_Main' ) ) {
 					'happfoco-backend-js',
 					$js_file,
 					array( 'jquery', 'wp-element', 'wp-i18n' ),
-					HAPPILEE_FORMS_VERSION,
+					HAPPILEE_FORMS_VERSION . '.' . filemtime( HAPPILEE_FORMS_PLUGIN_DIR . 'assets/js/bundle.js' ),
 					true
 				);
 
-				// Set up translations for React/JavaScript.
 				if ( function_exists( 'wp_set_script_translations' ) ) {
 					wp_set_script_translations(
 						'happfoco-backend-js',
@@ -143,7 +164,6 @@ if ( ! class_exists( 'Happfoco_Main' ) ) {
 					);
 				}
 
-				// Localize script must be called AFTER wp_enqueue_script.
 				wp_localize_script(
 					'happfoco-backend-js',
 					'happileeConnect',
@@ -166,11 +186,33 @@ if ( ! class_exists( 'Happfoco_Main' ) ) {
 		public static function log_message( $message, $level = 'info' ) {
 			if ( defined( 'WP_DEBUG' ) && true === WP_DEBUG ) {
 				if ( defined( 'WP_DEBUG_LOG' ) && true === WP_DEBUG_LOG ) {
-					// @codingStandardsIgnoreLine
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( sprintf( 'Happilee Forms Connect [%s]: %s', strtoupper( $level ), $message ) );
 				}
 			}
 			do_action( 'happfoco_log_message', $message, $level );
+		}
+
+		/**
+		 * Invalidate cached form and template settings.
+		 *
+		 * Cache keys are salted with the group's "last_changed" value, so
+		 * resetting it makes every previously cached entry unreachable.
+		 *
+		 * @return void
+		 */
+		public static function flush_settings_cache() {
+			wp_cache_delete( 'last_changed', self::CACHE_GROUP );
+		}
+
+		/**
+		 * Build a cache key that is invalidated by flush_settings_cache().
+		 *
+		 * @param string $key Base cache key.
+		 * @return string Salted cache key.
+		 */
+		public static function cache_key( $key ) {
+			return $key . ':' . wp_cache_get_last_changed( self::CACHE_GROUP );
 		}
 
 		/**
@@ -185,7 +227,6 @@ if ( ! class_exists( 'Happfoco_Main' ) ) {
 			</div>
 			<?php
 		}
-
 	}
 
 }

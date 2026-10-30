@@ -5,7 +5,7 @@
 ![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-blue?logo=wordpress)
 ![PHP](https://img.shields.io/badge/PHP-7.4%2B-777BB4?logo=php)
 ![License](https://img.shields.io/badge/License-GPLv2%2B-green)
-![Version](https://img.shields.io/badge/Version-1.0.9-orange)
+![Version](https://img.shields.io/badge/Version-1.0.10-orange)
 ![Tested up to](https://img.shields.io/badge/Tested%20up%20to-WordPress%207.1-blue)
 
 ---
@@ -22,6 +22,7 @@
 - [External Services](#external-services)
 - [Security](#security)
 - [Developer Reference](#developer-reference)
+- [Build Process](#build-process)
 - [Changelog](#changelog)
 - [License](#license)
 
@@ -95,9 +96,10 @@ Happilee Forms Connector seamlessly integrates your WordPress contact forms with
 1. Go to **Settings → Happilee Forms Connector**
 2. Enter your Happilee API key (found in your Happilee dashboard under **Project → Settings → Integrations**)
 3. Click **Save Settings** — the plugin validates your key against the Happilee API
-4. Navigate to **Configure Forms**
-5. Select a form, enable it, and map its fields to the Happilee contact fields
-6. Submit a test form to confirm data is flowing through
+4. Open the **Form Settings** tab, enable a form and open its settings
+5. Choose the trigger hook, the WhatsApp template and the form field that holds the mobile number — only approved templates whose name starts with `wp_` (e.g. `wp_order_confirmation`) are listed
+6. Map each of the template's parameters (e.g. `{{customer_name}}`) to a form field — the live preview shows the result
+7. Save, then submit a test form to confirm data is flowing through
 
 ---
 
@@ -123,13 +125,29 @@ WhatsApp automation workflow is triggered
 
 **Data sent to Happilee on each submission:**
 
+`createContact`:
+
 ```json
 {
-  "phone_number": "+911234567890",
-  "first_name": "Jane",
-  "last_name": "Doe",
-  "email": "jane@example.com",
-  "country_code": "+91"
+  "phone_number": "9876543210",
+  "country_code": "+91",
+  "form_id": "12",
+  "form_name": "Contact Us",
+  "lead_source": "Contact Us-Happilee web"
+}
+```
+
+Forms configured in earlier versions may also send their mapped `first_name`, `last_name`, `birthday` and `tags` fields.
+
+`sendMessage` (when a template is selected):
+
+```json
+{
+  "candidate_details": { "phone_number": "919876543210" },
+  "template_message_id": "<template id>",
+  "template_params": [
+    { "name": "body", "value": { "customer_name": "Jane Doe" } }
+  ]
 }
 ```
 
@@ -141,16 +159,16 @@ This plugin makes HTTP requests to the following third-party services.
 
 ### 1. Happilee API
 
-Used for API key validation and forwarding form submissions.
+Used for API key validation, forwarding form submissions and sending WhatsApp template messages.
 
 | Endpoint                                             | Purpose                                               |
 | ---------------------------------------------------- | ----------------------------------------------------- |
 | `https://api.happilee.io/api/v1/getProjectDetails`   | Validates your API key                                |
 | `https://api.happilee.io/api/v1/createContact`       | Forwards form submission data                         |
-| `https://api.happilee.io/api/v1/getTemplateMessages` | Fetching available WhatsApp templates                 |
-| `https://api.happilee.io/api/v1/sendMessage`         | sending WhatsApp template messages on form submission |
+| `https://api.happilee.io/api/v1/getTemplateMessages` | Fetches available WhatsApp templates                  |
+| `https://api.happilee.io/api/v1/sendMessage`         | Sends WhatsApp template messages on form submission   |
 
-Data transmitted includes your API key, form field values, form metadata, page URL, submission timestamp, and user IP/agent.
+Data transmitted includes your API key, the visitor's mobile number and country calling code, the form ID, form name and lead source, the selected template ID, and the form field values mapped to the template's parameters (plus First Name, Last Name, Birthday and Tags for forms configured in earlier versions).
 
 - [Happilee Website](https://happilee.io)
 - [Terms of Service](https://happilee.io/terms-of-use/)
@@ -160,7 +178,7 @@ Data transmitted includes your API key, form field values, form metadata, page U
 
 ### 2. ipapi.co — Country code lookup
 
-When no country calling code is mapped to a form field, the plugin sends the visitor's IP address to ipapi.co to resolve the correct international dialling prefix (e.g. `+44`, `+91`).
+When a connected form is submitted and the form does not provide a country calling code, the plugin sends the visitor's IP address to ipapi.co to resolve the correct international dialling prefix (e.g. `+44`, `+91`).
 
 - Endpoint: `https://ipapi.co/{visitor_ip}/country_calling_code/`
 - [ipapi.co Website](https://ipapi.co)
@@ -177,7 +195,7 @@ When no country calling code is mapped to a form field, the plugin sends the vis
 - All REST API parameters validated with `validate_callback` and sanitized with `sanitize_callback`
 - Rate limiting applied to API key verification (one attempt per 10 seconds per user)
 - `$_POST` data unslashed and sanitized individually on all form handlers
-- Uninstall routine removes all plugin data: custom table, API key, encryption key, and db version option
+- Uninstall routine removes all plugin data — both custom tables, API key, encryption key, and db version option — from every site on multisite
 
 ---
 
@@ -195,9 +213,9 @@ All endpoints are under the `happfoco/v1` namespace and require `manage_options`
 | `POST` | `/fetch-form-fields`       | Get fields for a specific form                  |
 | `POST` | `/save-form-settings`      | Save form enable/disable and field mapping      |
 | `GET`  | `/fetch-form-data`         | Retrieve all stored form configurations         |
-| `GET`  | `/fetch-template-messages` | Fetch available WhatsApp templates              |
-| `GET`  | `/fetch-template-settings` | Fetch template enable/disable and field mapping |
-| `POST` | `/save-template-settings`  | Save template enable/disable and field mapping  |
+| `GET`  | `/fetch-template-messages` | Fetch WhatsApp templates prefixed with `wp_`    |
+| `GET`  | `/fetch-template-settings` | Fetch a form's template and parameter mapping   |
+| `POST` | `/save-template-settings`  | Save a form's template and parameter mapping    |
 
 ### Database
 
@@ -262,6 +280,18 @@ Output is written to `assets/js/bundle.js` and `assets/css/main.css`.
 ---
 
 ## Changelog
+
+### 1.0.10
+
+- Changed: Hook, field mapping, template selection and parameter mapping are now configured in a single modal with a live WhatsApp preview
+- Changed: Only approved templates whose name starts with `wp_` are listed for selection
+- Added: Form ID, form name and lead source (`{form name}-Happilee web`) are sent with each contact
+- Fixed: Saved settings now take effect immediately on sites with a persistent object cache
+- Fixed: Forms from different form plugins that share the same ID no longer share settings
+- Fixed: WPForms Name fields are now split correctly into first and last name
+- Fixed: Plugin data is now removed from every site on multisite uninstall
+- Fixed: Contact Form 7 submissions marked as spam or failing validation no longer trigger a WhatsApp message
+- Improved: Security enhancements and WordPress coding standards compliance
 
 ### 1.0.9
 
